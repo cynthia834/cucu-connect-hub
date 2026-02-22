@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Wifi, Plus, Edit, Video, Radio } from 'lucide-react';
+import { Wifi, Plus, Edit, Video, Radio, FileText, Megaphone, Monitor, Shield, ListOrdered } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
@@ -129,6 +129,67 @@ export default function ICT() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ICT Sub-Units */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="font-display text-lg">ICT Docket — Sub-Units</CardTitle>
+          <p className="text-sm text-muted-foreground">The ICT Docket is the technology backbone of CUCU, divided into three sub-units.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl border border-border/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center"><FileText className="w-5 h-5 text-primary" /></div>
+                <h4 className="font-semibold">Editorial</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">Write articles, publish CU magazine content, manage blog, draft announcements, produce newsletters.</p>
+              <div className="flex flex-wrap gap-1">{['Blog CRUD', 'Newsletter', 'Announcements'].map(t => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}</div>
+            </div>
+            <div className="p-4 rounded-xl border border-border/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center"><Megaphone className="w-5 h-5 text-warning" /></div>
+                <h4 className="font-semibold">Publicity</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">Manage social media accounts, design graphics, promote events, handle WhatsApp broadcasts.</p>
+              <div className="flex flex-wrap gap-1">{['Social Media', 'Event Promotion'].map(t => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}</div>
+            </div>
+            <div className="p-4 rounded-xl border border-border/50 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-success/10 flex items-center justify-center"><Monitor className="w-5 h-5 text-success" /></div>
+                <h4 className="font-semibold">IT (Livestream, Website, Security)</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">Set up streaming equipment, manage livestream links, maintain site performance, monitor security.</p>
+              <div className="flex flex-wrap gap-1">{['Livestream', 'Broadcast Log', 'Site Settings', 'Security'].map(t => <Badge key={t} variant="outline" className="text-xs">{t}</Badge>)}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Livestream Workflow */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="font-display text-lg flex items-center gap-2"><ListOrdered className="w-5 h-5 text-primary" /> Livestream Workflow</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-2">
+            {[
+              'IT team creates an Event on the site and enables the "Livestream" toggle.',
+              'Livestream URL (YouTube/Zoom/Facebook Live) is added to the event page.',
+              'An embedded player or redirect link appears on the event page for members.',
+              'During service, IT monitors stream health and updates the page if URL changes.',
+              'Post-service: recording URL is attached to the Service Update page by ICT.',
+              'Broadcast log entry is created: date, platform, estimated viewers, recording link.',
+              'Recording is uploaded to the Media Library with speaker, topic & series tags.',
+            ].map((step, i) => (
+              <li key={i} className="flex gap-3 items-start">
+                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold flex items-center justify-center">{i + 1}</span>
+                <span className="text-sm text-muted-foreground pt-0.5">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
