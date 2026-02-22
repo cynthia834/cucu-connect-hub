@@ -114,6 +114,56 @@ export type Database = {
           },
         ]
       }
+      broadcast_logs: {
+        Row: {
+          broadcast_date: string
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          id: string
+          livestream_url: string | null
+          notes: string | null
+          platform: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          broadcast_date?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          livestream_url?: string | null
+          notes?: string | null
+          platform?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          broadcast_date?: string
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          livestream_url?: string | null
+          notes?: string | null
+          platform?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cbr_plans: {
         Row: {
           content: string | null
