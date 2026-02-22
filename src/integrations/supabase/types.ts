@@ -411,6 +411,85 @@ export type Database = {
         }
         Relationships: []
       }
+      mission_reports: {
+        Row: {
+          challenges: string | null
+          created_at: string
+          followups: string | null
+          id: string
+          mission_id: string
+          salvations: number | null
+          souls_reached: number | null
+          submitted_by: string
+          testimonies: string | null
+          updated_at: string
+        }
+        Insert: {
+          challenges?: string | null
+          created_at?: string
+          followups?: string | null
+          id?: string
+          mission_id: string
+          salvations?: number | null
+          souls_reached?: number | null
+          submitted_by: string
+          testimonies?: string | null
+          updated_at?: string
+        }
+        Update: {
+          challenges?: string | null
+          created_at?: string
+          followups?: string | null
+          id?: string
+          mission_id?: string
+          salvations?: number | null
+          souls_reached?: number | null
+          submitted_by?: string
+          testimonies?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_reports_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          mission_id: string
+          team_role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          mission_id: string
+          team_role?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          mission_id?: string
+          team_role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_team_members_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       missions: {
         Row: {
           created_at: string
@@ -419,11 +498,13 @@ export type Database = {
           id: string
           led_by: string | null
           location: string | null
+          mission_type: string
           raised_amount: number | null
           souls_reached: number | null
           start_date: string | null
           status: string
           target_amount: number | null
+          target_group: string | null
           target_souls: number | null
           title: string
           updated_at: string
@@ -435,11 +516,13 @@ export type Database = {
           id?: string
           led_by?: string | null
           location?: string | null
+          mission_type?: string
           raised_amount?: number | null
           souls_reached?: number | null
           start_date?: string | null
           status?: string
           target_amount?: number | null
+          target_group?: string | null
           target_souls?: number | null
           title: string
           updated_at?: string
@@ -451,11 +534,13 @@ export type Database = {
           id?: string
           led_by?: string | null
           location?: string | null
+          mission_type?: string
           raised_amount?: number | null
           souls_reached?: number | null
           start_date?: string | null
           status?: string
           target_amount?: number | null
+          target_group?: string | null
           target_souls?: number | null
           title?: string
           updated_at?: string
