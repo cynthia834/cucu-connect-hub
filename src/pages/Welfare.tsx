@@ -52,6 +52,26 @@ export default function Welfare() {
   return (
     <div className="animate-fade-in">
       <PageHeader title="Welfare" description="Request and track welfare support" />
+
+      {/* M-Pesa Payment Info */}
+      <Card className="border-border/50 mb-8 overflow-hidden">
+        <div className="bg-success/10 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center">
+            <Users className="w-5 h-5 text-success" />
+          </div>
+          <div>
+            <h3 className="font-display font-bold">M-Pesa Paybill</h3>
+            <p className="text-xs text-muted-foreground">Welfare contributions via Lipa Na M-Pesa</p>
+          </div>
+        </div>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-6 text-sm">
+            <div><span className="text-muted-foreground">Paybill:</span> <strong className="text-lg tracking-wider">247247</strong></div>
+            <div><span className="text-muted-foreground">Account:</span> <strong className="text-lg tracking-wider">734503</strong></div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-border/50 mb-8">
         <CardHeader><CardTitle className="font-display text-lg">Submit Welfare Request</CardTitle></CardHeader>
         <CardContent>
