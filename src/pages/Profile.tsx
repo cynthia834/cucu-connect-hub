@@ -1,0 +1,81 @@
+import PageHeader from '@/components/shared/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react';
+
+export default function Profile() {
+  const { profile, fetchProfile } = useAuthStore();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    full_name: '', phone: '', bio: '', student_id: '', department: '', year_of_study: '',
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        bio: profile.bio || '',
+        student_id: profile.student_id || '',
+        department: profile.department || '',
+        year_of_study: profile.year_of_study?.toString() || '',
+      });
+    }
+  }, [profile]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: form.full_name,
+          phone: form.phone || null,
+          bio: form.bio || null,
+          student_id: form.student_id || null,
+          department: form.department || null,
+          year_of_study: form.year_of_study ? parseInt(form.year_of_study) : null,
+        })
+        .eq('user_id', profile?.user_id);
+      if (error) throw error;
+      await fetchProfile();
+      toast({ title: 'Profile updated' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="animate-fade-in">
+      <PageHeader title="My Profile" description="Manage your personal information" />
+      <Card className="border-border/50 max-w-2xl">
+        <CardHeader><CardTitle className="font-display text-lg">Personal Information</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Full Name</Label><Input value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} required maxLength={100} /></div>
+              <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} maxLength={20} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Student ID</Label><Input value={form.student_id} onChange={e => setForm({...form, student_id: e.target.value})} maxLength={20} /></div>
+              <div><Label>Year of Study</Label><Input type="number" value={form.year_of_study} onChange={e => setForm({...form, year_of_study: e.target.value})} min={1} max={6} /></div>
+            </div>
+            <div><Label>Department</Label><Input value={form.department} onChange={e => setForm({...form, department: e.target.value})} maxLength={100} /></div>
+            <div><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} maxLength={500} rows={3} /></div>
+            <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save Changes'}</Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
