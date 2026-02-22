@@ -60,10 +60,22 @@ export default function Giving() {
             <p className="text-xs text-muted-foreground">Lipa Na M-Pesa</p>
           </div>
         </div>
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap gap-6 text-sm">
             <div><span className="text-muted-foreground">Paybill:</span> <strong className="text-lg tracking-wider">247247</strong></div>
             <div><span className="text-muted-foreground">Account:</span> <strong className="text-lg tracking-wider">734503</strong></div>
+          </div>
+          <div className="border-t border-border/50 pt-3">
+            <p className="text-sm font-semibold text-foreground mb-2">How to pay via M-Pesa:</p>
+            <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+              <li>Go to <strong className="text-foreground">M-Pesa</strong> on your phone</li>
+              <li>Select <strong className="text-foreground">Lipa Na M-Pesa</strong></li>
+              <li>Select <strong className="text-foreground">Pay Bill</strong></li>
+              <li>Enter Business No: <strong className="text-foreground">247247</strong></li>
+              <li>Enter Account No: <strong className="text-foreground">734503</strong></li>
+              <li>Enter the <strong className="text-foreground">Amount</strong></li>
+              <li>Enter your <strong className="text-foreground">M-Pesa PIN</strong> and confirm</li>
+            </ol>
           </div>
         </CardContent>
       </Card>
