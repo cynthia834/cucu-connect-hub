@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Shield, Users, Search, Plus, Trash2 } from 'lucide-react';
+import { Shield, Users, Search, Plus, Trash2, Pencil } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
@@ -21,6 +21,8 @@ export default function Admin() {
   const [search, setSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [editNewRole, setEditNewRole] = useState<string>('');
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery({
     queryKey: ['admin-profiles'],
@@ -54,6 +56,20 @@ export default function Admin() {
       toast({ title: 'Role assigned successfully' });
       setSelectedRole('');
       setSelectedUserId('');
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const updateRole = useMutation({
+    mutationFn: async ({ roleId, newRole }: { roleId: string; newRole: string }) => {
+      const { error } = await supabase.from('user_roles').update({ role: newRole as any }).eq('id', roleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-all-roles'] });
+      toast({ title: 'Role updated successfully' });
+      setEditingRoleId(null);
+      setEditNewRole('');
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -167,15 +183,58 @@ export default function Admin() {
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             {userRoles.filter(r => r.role !== 'general_member').map(r => (
-                              <Button
-                                key={r.id}
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive h-7 px-2 text-xs"
-                                onClick={() => revokeRole.mutate(r.id)}
-                              >
-                                <Trash2 className="w-3 h-3 mr-1" />{r.role.replace(/_/g, ' ')}
-                              </Button>
+                              <div key={r.id} className="flex items-center gap-0.5">
+                                {editingRoleId === r.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select value={editNewRole} onValueChange={setEditNewRole}>
+                                      <SelectTrigger className="h-7 text-xs w-[140px]">
+                                        <SelectValue placeholder="New role" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {ALL_ROLES.filter(ar => ar !== 'general_member').map(ar => (
+                                          <SelectItem key={ar} value={ar}>{ar.replace(/_/g, ' ')}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs text-primary"
+                                      disabled={!editNewRole || updateRole.isPending}
+                                      onClick={() => updateRole.mutate({ roleId: r.id, newRole: editNewRole })}
+                                    >
+                                      Save
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs"
+                                      onClick={() => { setEditingRoleId(null); setEditNewRole(''); }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-primary hover:text-primary h-7 px-2 text-xs"
+                                      onClick={() => { setEditingRoleId(r.id); setEditNewRole(r.role); }}
+                                    >
+                                      <Pencil className="w-3 h-3 mr-1" />{r.role.replace(/_/g, ' ')}
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive h-7 px-1.5"
+                                      onClick={() => revokeRole.mutate(r.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             ))}
                           </div>
                         </TableCell>
