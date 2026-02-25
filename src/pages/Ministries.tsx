@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Church } from 'lucide-react';
+import SubcomSection from '@/components/ministry/SubcomSection';
 
 const ministryIcons: Record<string, string> = {
   'Praise & Worship': '🎵', 'Ushering': '🤝', 'Intercessory': '🙏',
@@ -111,6 +112,11 @@ export default function Ministries() {
                       )}
                     </div>
                   </div>
+                  {/* Subcommittees */}
+                  <div className="border-t border-border/50 pt-3 mt-2">
+                    <SubcomSection ministryId={m.id} ministryName={m.name} />
+                  </div>
+
                   {/* Role Guide */}
                   <div className="border-t border-border/50 pt-3 mt-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Role Guide</p>

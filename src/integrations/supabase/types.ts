@@ -741,6 +741,123 @@ export type Database = {
         }
         Relationships: []
       }
+      subcom_audit_log: {
+        Row: {
+          action: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          performed_at: string
+          performed_by: string
+          subcom_id: string
+        }
+        Insert: {
+          action: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_at?: string
+          performed_by: string
+          subcom_id: string
+        }
+        Update: {
+          action?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_at?: string
+          performed_by?: string
+          subcom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcom_audit_log_subcom_id_fkey"
+            columns: ["subcom_id"]
+            isOneToOne: false
+            referencedRelation: "subcoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subcom_members: {
+        Row: {
+          contact_visible: boolean
+          created_at: string
+          display_order: number
+          id: string
+          responsibilities: string | null
+          role_title: string
+          subcom_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_visible?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          responsibilities?: string | null
+          role_title?: string
+          subcom_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_visible?: boolean
+          created_at?: string
+          display_order?: number
+          id?: string
+          responsibilities?: string | null
+          role_title?: string
+          subcom_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcom_members_subcom_id_fkey"
+            columns: ["subcom_id"]
+            isOneToOne: false
+            referencedRelation: "subcoms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subcoms: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          ministry_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          ministry_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          ministry_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcoms_ministry_id_fkey"
+            columns: ["ministry_id"]
+            isOneToOne: false
+            referencedRelation: "ministries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       testimonies: {
         Row: {
           approved_at: string | null
@@ -842,6 +959,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit_subcom: { Args: { _user_id: string }; Returns: boolean }
       has_any_admin_role: { Args: { _user_id: string }; Returns: boolean }
       has_assets_role: { Args: { _user_id: string }; Returns: boolean }
       has_finance_role: { Args: { _user_id: string }; Returns: boolean }

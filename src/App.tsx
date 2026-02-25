@@ -27,6 +27,7 @@ import ICT from "./pages/ICT";
 import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
+import SubcomDetail from "./pages/SubcomDetail";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
               <Route path="/reports" element={<ProtectedRoute requiredRoles={['super_admin','cu_chairperson']}><Reports /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requiredRoles={['super_admin','cu_chairperson']}><Admin /></ProtectedRoute>} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/subcoms/:id" element={<SubcomDetail />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
