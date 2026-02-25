@@ -5,14 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Upload, User } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [secondName, setSecondName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [regNumber, setRegNumber] = useState('');
+  const [yearOfStudy, setYearOfStudy] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -28,11 +33,16 @@ export default function Auth() {
         if (error) throw error;
         navigate('/dashboard');
       } else {
+        const fullName = [firstName, secondName, lastName].filter(Boolean).join(' ');
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            data: {
+              full_name: fullName,
+              student_id: regNumber,
+              year_of_study: yearOfStudy ? parseInt(yearOfStudy) : null,
+            },
             emailRedirectTo: window.location.origin,
           },
         });
@@ -56,96 +66,230 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-hero-gradient items-center justify-center p-12">
-        <div className="max-w-md text-center">
+      <div className="hidden lg:flex lg:w-[420px] bg-hero-gradient items-center justify-center p-12 flex-shrink-0">
+        <div className="max-w-xs text-center">
           <div className="w-20 h-20 rounded-2xl bg-gold mx-auto mb-8 flex items-center justify-center">
-            <span className="font-display font-bold text-3xl text-navy-deep">CU</span>
+            <span className="font-display font-bold text-3xl text-primary">CU</span>
           </div>
-          <h1 className="font-display text-4xl font-bold text-primary-foreground mb-4">
-            Chuka University Christian Union
+          <h1 className="font-display text-3xl font-bold text-primary-foreground mb-4">
+            CUCU Portal
           </h1>
-          <p className="text-primary-foreground/70 text-lg leading-relaxed">
+          <p className="text-primary-foreground/70 text-sm leading-relaxed">
             Digital Governance Platform — Empowering faith, leadership, and community through structured institutional management.
           </p>
         </div>
       </div>
 
       {/* Right panel - form */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <Card className="w-full max-w-md border-border/50 shadow-lg">
-          <CardHeader className="text-center">
-            <div className="lg:hidden w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-xl">CU</span>
-            </div>
-            <CardTitle className="font-display text-2xl">
-              {isLogin ? 'Welcome Back' : 'Create Account'}
-            </CardTitle>
-            <CardDescription>
-              {isLogin ? 'Sign in to access your CUCU portal' : 'Join the Chuka University Christian Union'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
+      <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+        {isLogin ? (
+          /* Login form - compact */
+          <Card className="w-full max-w-md border-border/50 shadow-lg">
+            <CardHeader className="text-center">
+              <div className="lg:hidden w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-xl">CU</span>
+              </div>
+              <CardTitle className="font-display text-2xl">Welcome Back</CardTitle>
+              <CardDescription>Sign in to access your CUCU portal</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                    required={!isLogin}
-                    maxLength={100}
-                  />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  maxLength={255}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="your@email.com"
                     required
-                    minLength={6}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Please wait...' : 'Sign In'}
+                </Button>
+              </form>
+              <div className="mt-6 text-center">
+                <button
+                  onClick={() => setIsLogin(false)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Don't have an account? Sign up
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Registration form - Figma style */
+          <div className="w-full max-w-2xl">
+            <div className="text-center mb-8">
+              <div className="lg:hidden w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-xl">CU</span>
+              </div>
+              <h1 className="font-display text-3xl font-bold text-foreground">Registration</h1>
+              <p className="text-muted-foreground mt-2">
+                Join the CUCU community. Complete the form below to get started.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Profile Photo */}
+              <Card className="border-border/50">
+                <CardContent className="flex flex-col items-center py-8">
+                  <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <User className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                  <p className="font-semibold text-foreground text-sm">Profile Photo</p>
+                  <p className="text-xs text-muted-foreground">Optional - Upload a clear photo of yourself</p>
+                  <button type="button" className="mt-2 text-xs text-gold flex items-center gap-1 hover:underline">
+                    <Upload className="w-3 h-3" /> Click to upload
                   </button>
+                </CardContent>
+              </Card>
+
+              {/* Personal Details */}
+              <div>
+                <h2 className="text-xs font-bold tracking-widest uppercase text-gold mb-4">Personal Details</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={firstName}
+                      onChange={e => setFirstName(e.target.value)}
+                      placeholder="John"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondName">Second Name</Label>
+                    <Input
+                      id="secondName"
+                      value={secondName}
+                      onChange={e => setSecondName(e.target.value)}
+                      placeholder="Quincy"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    placeholder="Doe"
+                    required
+                  />
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+
+              {/* Academic Information */}
+              <div>
+                <h2 className="text-xs font-bold tracking-widest uppercase text-gold mb-4">Academic Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="regNumber">Registration Number</Label>
+                    <Input
+                      id="regNumber"
+                      value={regNumber}
+                      onChange={e => setRegNumber(e.target.value)}
+                      placeholder="CUCU/2024/00001"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="yearOfStudy">Year of Study</Label>
+                    <Select value={yearOfStudy} onValueChange={setYearOfStudy}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1st Year</SelectItem>
+                        <SelectItem value="2">2nd Year</SelectItem>
+                        <SelectItem value="3">3rd Year</SelectItem>
+                        <SelectItem value="4">4th Year</SelectItem>
+                        <SelectItem value="5">5th Year</SelectItem>
+                        <SelectItem value="6">6th Year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Credentials */}
+              <div>
+                <h2 className="text-xs font-bold tracking-widest uppercase text-gold mb-4">Account Credentials</h2>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="regEmail">Email</Label>
+                    <Input
+                      id="regEmail"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regPassword">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="regPassword"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        minLength={6}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? 'Please wait...' : 'Create Account'}
               </Button>
             </form>
+
             <div className="mt-6 text-center">
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => setIsLogin(true)}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                Already have an account? Sign in
               </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
       </div>
     </div>
   );
