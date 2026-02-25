@@ -1,105 +1,173 @@
 import { useAuthStore } from '@/stores/authStore';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, BookOpen, Heart, HandCoins, Users, Globe, MessageSquare, ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Star, Globe, GraduationCap, Settings, BookOpen, CheckCircle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
 
-const quickLinks = [
-  { label: 'Upcoming Events', path: '/events', icon: Calendar, color: 'bg-primary' },
-  { label: 'My Programs', path: '/programs', icon: BookOpen, color: 'bg-secondary' },
-  { label: 'Give', path: '/giving', icon: HandCoins, color: 'bg-gold' },
-  { label: 'Prayer Requests', path: '/prayer-requests', icon: Heart, color: 'bg-destructive' },
-  { label: 'Testimonies', path: '/testimonies', icon: MessageSquare, color: 'bg-success' },
-  { label: 'Missions', path: '/missions', icon: Globe, color: 'bg-warning' },
+const devotionals = [
+  {
+    reference: 'Psalm 100:2',
+    text: '"Worship the Lord with gladness; come before him with joyful songs."',
+    reflection: 'Reflect: How can your melody today bring glory to His name?',
+  },
 ];
 
 export default function Dashboard() {
   const { profile, roles } = useAuthStore();
+  const devotional = devotionals[0];
+  const yearLabel = profile?.year_of_study ? `${profile.year_of_study}${['st','nd','rd'][((profile.year_of_study % 100) - 20) % 10] || ['st','nd','rd'][(profile.year_of_study % 100) - 1] || 'th'} Year Student` : 'Student';
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Welcome */}
-      <div>
-        <h1 className="font-display text-3xl font-bold text-foreground">
-          Welcome, {profile?.full_name || 'Member'}
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+      {/* Search bar */}
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search resources, events..." className="pl-10" />
       </div>
 
-      {/* Role badges */}
-      <div className="flex flex-wrap gap-2">
-        {roles.map(role => (
-          <span
-            key={role}
-            className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize"
-          >
-            {role.replace(/_/g, ' ')}
-          </span>
-        ))}
-      </div>
+      {/* Profile + Devotional row */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+        {/* Profile Card */}
+        <Card className="border-border/50 overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Avatar */}
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="w-28 h-28 rounded-full bg-muted flex items-center justify-center text-3xl font-display font-bold text-muted-foreground border-4 border-border">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    profile?.full_name?.charAt(0)?.toUpperCase() || 'U'
+                  )}
+                </div>
+                {/* Ministry badges */}
+                <div className="flex flex-wrap justify-center gap-1.5 mt-1">
+                  {roles.slice(0, 2).map(role => (
+                    <span
+                      key={role}
+                      className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20 bg-primary/5 text-primary"
+                    >
+                      {role.replace(/_/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {quickLinks.map(link => {
-          const Icon = link.icon;
-          return (
-            <Link key={link.path} to={link.path}>
-              <Card className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 cursor-pointer border-border/50">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className={`w-12 h-12 rounded-xl ${link.color} flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-primary-foreground" />
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="font-display text-2xl font-bold text-foreground">
+                      {profile?.full_name || 'Member'}
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {yearLabel} • Christian Union
+                    </p>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-foreground">{link.label}</h3>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+                  <Link to="/profile">
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                      <Settings className="w-4 h-4" />
+                      Edit Bio
+                    </Button>
+                  </Link>
+                </div>
 
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="font-display text-xl">My Profile</CardTitle>
-            <CardDescription>Your personal information</CardDescription>
+                <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+                  {profile?.bio || 'Passionate about worship and youth mentorship. Committed to spiritual growth through music.'}
+                </p>
+
+                {/* Achievement badges */}
+                <div className="flex gap-6 mt-5">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
+                      <Star className="w-5 h-5 text-gold" />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Member</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Globe className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Missions</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <GraduationCap className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">CBR Grad</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Devotional */}
+        <Card className="bg-gold text-primary border-0 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-gold-light/30 -translate-y-8 translate-x-8" />
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg font-display">
+              📖 Daily Devotional
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-sm">Email</span>
-              <span className="text-sm font-medium">{profile?.email || '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-sm">Student ID</span>
-              <span className="text-sm font-medium">{profile?.student_id || '—'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground text-sm">Department</span>
-              <span className="text-sm font-medium">{profile?.department || '—'}</span>
-            </div>
-            <Link to="/profile" className="text-sm text-primary hover:underline inline-block mt-2">
-              Edit Profile →
-            </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="font-display text-xl">Announcements</CardTitle>
-            <CardDescription>Latest service updates</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">No recent announcements.</p>
-            <Link to="/service-updates" className="text-sm text-primary hover:underline inline-block mt-2">
-              View All →
-            </Link>
+            <p className="text-sm font-semibold italic">{devotional.reference}</p>
+            <p className="font-display text-lg leading-snug">{devotional.text}</p>
+            <p className="text-sm italic opacity-80">{devotional.reflection}</p>
+            <Button variant="secondary" className="w-full mt-2 gap-2">
+              <CheckCircle className="w-4 h-4" /> Mark as Read
+            </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Enrolled Programs */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl font-bold flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-gold" /> Enrolled Programs
+          </h2>
+          <span className="text-xs font-semibold uppercase tracking-wider text-gold">
+            2 Programs Active
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="border-border/50">
+            <CardContent className="p-5">
+              <h3 className="font-semibold text-foreground">CBR Program</h3>
+              <p className="text-xs text-muted-foreground mt-1">Comprehensive Bible Reading</p>
+              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full" style={{ width: '65%' }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">65% complete</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50">
+            <CardContent className="p-5">
+              <h3 className="font-semibold text-foreground">Discipleship</h3>
+              <p className="text-xs text-muted-foreground mt-1">New believers track</p>
+              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-gold rounded-full" style={{ width: '30%' }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">30% complete</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Announcements */}
+      <Card className="border-border/50">
+        <CardHeader>
+          <CardTitle className="font-display text-xl">Announcements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">No recent announcements.</p>
+          <Link to="/service-updates" className="text-sm text-primary hover:underline inline-block mt-2">
+            View All →
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 }
