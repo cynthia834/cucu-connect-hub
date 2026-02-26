@@ -15,7 +15,21 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 
-const EVENT_TYPES = ['general', 'fellowship', 'conference', 'outreach', 'prayer', 'workshop'];
+const EVENT_TYPES = [
+  'general', 'fellowship', 'conference', 'outreach', 'prayer', 'workshop',
+  'saturday_service', 'sunday_service',
+];
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  general: 'General',
+  fellowship: 'Fellowship',
+  conference: 'Conference',
+  outreach: 'Outreach',
+  prayer: 'Prayer',
+  workshop: 'Workshop',
+  saturday_service: 'Saturday Service',
+  sunday_service: 'Sunday Service',
+};
 
 interface EventForm {
   title: string;
@@ -32,6 +46,17 @@ interface EventForm {
 const emptyForm: EventForm = {
   title: '', description: '', event_type: 'general', start_date: '', end_date: '',
   location: '', is_livestreamed: false, livestream_url: '', is_published: false,
+};
+
+// Pre-fill defaults for Saturday/Sunday services
+const getServiceDefaults = (type: string): Partial<EventForm> => {
+  if (type === 'saturday_service') {
+    return { title: 'Saturday Service', location: 'Main Hall' };
+  }
+  if (type === 'sunday_service') {
+    return { title: 'Sunday Service', location: 'Main Hall' };
+  }
+  return {};
 };
 
 export default function Events() {
@@ -53,29 +78,41 @@ export default function Events() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const payload = {
-        ...form,
+      if (!form.title || !form.start_date) throw new Error('Title and start date are required');
+      const payload: any = {
+        title: form.title,
+        description: form.description || null,
+        event_type: form.event_type,
         start_date: new Date(form.start_date).toISOString(),
         end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
-        created_by: user?.id,
+        location: form.location || null,
+        is_livestreamed: form.is_livestreamed,
+        livestream_url: form.livestream_url || null,
+        is_published: form.is_published,
       };
       if (editId) {
         const { error } = await supabase.from('events').update(payload).eq('id', editId);
         if (error) throw error;
       } else {
+        payload.created_by = user?.id;
         const { error } = await supabase.from('events').insert(payload);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      toast({ title: editId ? 'Event updated' : 'Event created' });
+      toast({ title: editId ? 'Event updated' : 'Event created successfully' });
       setOpen(false);
       setForm(emptyForm);
       setEditId(null);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const handleTypeChange = (type: string) => {
+    const defaults = getServiceDefaults(type);
+    setForm(f => ({ ...f, event_type: type, ...defaults }));
+  };
 
   const openEdit = (event: any) => {
     setForm({
@@ -106,21 +143,24 @@ export default function Events() {
               <DialogHeader>
                 <DialogTitle className="font-display">{editId ? 'Edit Event' : 'Create Event'}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 mt-2">
-                <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-                <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Type</Label>
-                    <Select value={form.event_type} onValueChange={v => setForm(f => ({ ...f, event_type: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>Location</Label><Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
+              <form onSubmit={(e) => { e.preventDefault(); upsert.mutate(); }} className="space-y-4 mt-2">
+                <div>
+                  <Label>Event Type</Label>
+                  <Select value={form.event_type} onValueChange={handleTypeChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map(t => (
+                        <SelectItem key={t} value={t}>{EVENT_TYPE_LABELS[t]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div><Label>Title</Label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required /></div>
+                <div><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
+                <div><Label>Location</Label><Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Start Date</Label><Input type="datetime-local" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} /></div>
-                  <div><Label>End Date</Label><Input type="datetime-local" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+                  <div><Label>Start Date & Time</Label><Input type="datetime-local" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} required /></div>
+                  <div><Label>End Date & Time</Label><Input type="datetime-local" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} /></div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
@@ -135,10 +175,10 @@ export default function Events() {
                 {form.is_livestreamed && (
                   <div><Label>Livestream URL</Label><Input value={form.livestream_url} onChange={e => setForm(f => ({ ...f, livestream_url: e.target.value }))} placeholder="https://youtube.com/..." /></div>
                 )}
-                <Button onClick={() => upsert.mutate()} disabled={!form.title || !form.start_date || upsert.isPending} className="w-full">
-                  {editId ? 'Update Event' : 'Create Event'}
+                <Button type="submit" disabled={!form.title || !form.start_date || upsert.isPending} className="w-full">
+                  {upsert.isPending ? 'Saving...' : editId ? 'Update Event' : 'Create Event'}
                 </Button>
-              </div>
+              </form>
             </DialogContent>
           </Dialog>
         )}
@@ -157,7 +197,9 @@ export default function Events() {
                   <CardTitle className="font-display text-lg">{event.title}</CardTitle>
                   <div className="flex gap-1 items-center">
                     {event.is_livestreamed && <Video className="w-4 h-4 text-primary" />}
-                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary capitalize">{event.event_type}</span>
+                    <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                      {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
+                    </span>
                     {!event.is_published && <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning">Draft</span>}
                   </div>
                 </div>
