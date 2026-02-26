@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,32 @@ export default function Auth() {
   const [yearOfStudy, setYearOfStudy] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 2MB', variant: 'destructive' });
+      return;
+    }
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const uploadAvatar = async (userId: string) => {
+    if (!avatarFile) return;
+    const ext = avatarFile.name.split('.').pop();
+    const path = `${userId}/avatar.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, avatarFile, { upsert: true });
+    if (uploadError) throw uploadError;
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', userId);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +58,7 @@ export default function Auth() {
         navigate('/dashboard');
       } else {
         const fullName = [firstName, secondName, lastName].filter(Boolean).join(' ');
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -47,6 +71,9 @@ export default function Auth() {
           },
         });
         if (error) throw error;
+        if (data.user && avatarFile) {
+          try { await uploadAvatar(data.user.id); } catch {}
+        }
         toast({
           title: 'Account created',
           description: 'Please check your email to verify your account.',
@@ -157,12 +184,23 @@ export default function Auth() {
               {/* Profile Photo */}
               <Card className="border-border/50">
                 <CardContent className="flex flex-col items-center py-8">
-                  <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <User className="w-10 h-10 text-muted-foreground" />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    onChange={handleAvatarSelect}
+                  />
+                  <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-3 overflow-hidden">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-10 h-10 text-muted-foreground" />
+                    )}
                   </div>
                   <p className="font-semibold text-foreground text-sm">Profile Photo</p>
                   <p className="text-xs text-muted-foreground">Optional - Upload a clear photo of yourself</p>
-                  <button type="button" className="mt-2 text-xs text-gold flex items-center gap-1 hover:underline">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-2 text-xs text-gold flex items-center gap-1 hover:underline">
                     <Upload className="w-3 h-3" /> Click to upload
                   </button>
                 </CardContent>

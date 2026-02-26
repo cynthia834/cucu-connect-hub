@@ -7,12 +7,15 @@ import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Upload, User } from 'lucide-react';
 
 export default function Profile() {
   const { profile, fetchProfile } = useAuthStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     full_name: '', phone: '', bio: '', student_id: '', department: '', year_of_study: '',
   });
@@ -29,6 +32,31 @@ export default function Profile() {
       });
     }
   }, [profile]);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.user_id) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 2MB', variant: 'destructive' });
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${profile.user_id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', profile.user_id);
+      if (error) throw error;
+      await fetchProfile();
+      toast({ title: 'Avatar updated' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +89,32 @@ export default function Profile() {
       <Card className="border-border/50 max-w-2xl">
         <CardHeader><CardTitle className="font-display text-lg">Personal Information</CardTitle></CardHeader>
         <CardContent>
+          {/* Avatar upload */}
+          <div className="flex flex-col items-center mb-6">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-border">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10 text-muted-foreground" />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
+              className="mt-2 text-xs text-gold flex items-center gap-1 hover:underline disabled:opacity-50"
+            >
+              <Upload className="w-3 h-3" /> {avatarUploading ? 'Uploading...' : 'Change Photo'}
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Full Name</Label><Input value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} required maxLength={100} /></div>
