@@ -1,10 +1,13 @@
 import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Church } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { Church, UserPlus, LogOut } from 'lucide-react';
 import SubcomSection from '@/components/ministry/SubcomSection';
+import { toast } from '@/hooks/use-toast';
 
 const ministryIcons: Record<string, string> = {
   'Praise & Worship': '🎵', 'Ushering': '🤝', 'Intercessory': '🙏',
@@ -40,10 +43,6 @@ const ministryRoleGuide: Record<string, { role: string; description: string }[]>
     { role: 'Ministry Chairperson', description: 'Leads a specific ministry department' },
     { role: 'Docket Leader', description: 'Manages programs and discipleship tracks' },
   ],
-  general: [
-    { role: 'Cell Group Leader', description: 'Leads a small fellowship group' },
-    { role: 'General Member', description: 'Active member participating in CU activities' },
-  ],
 };
 
 function getMinistryRoles(name: string): { role: string; description: string }[] {
@@ -53,11 +52,14 @@ function getMinistryRoles(name: string): { role: string; description: string }[]
   if (lower.includes('ict') || lower.includes('tech') || lower.includes('media') || lower.includes('sound')) return ministryRoleGuide.ict;
   if (lower.includes('mission') || lower.includes('evangel')) return ministryRoleGuide.missions;
   if (lower.includes('welfare') || lower.includes('hospital')) return ministryRoleGuide.welfare;
-  if (lower.includes('disciple') || lower.includes('bible')) return [...ministryRoleGuide.general, ...ministryRoleGuide.leadership.slice(2)];
-  return ministryRoleGuide.general;
+  if (lower.includes('disciple') || lower.includes('bible')) return ministryRoleGuide.leadership.slice(2);
+  return ministryRoleGuide.leadership;
 }
 
 export default function Ministries() {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
+
   const { data: ministries, isLoading } = useQuery({
     queryKey: ['ministries'],
     queryFn: async () => {
@@ -67,12 +69,50 @@ export default function Ministries() {
     },
   });
 
+  // Fetch user's ministry memberships
+  const { data: myMemberships } = useQuery({
+    queryKey: ['ministry-memberships', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase.from('ministry_members').select('ministry_id').eq('user_id', user.id);
+      if (error) throw error;
+      return data.map(m => m.ministry_id);
+    },
+    enabled: !!user?.id,
+  });
+
+  const joinMinistry = useMutation({
+    mutationFn: async (ministryId: string) => {
+      const { error } = await supabase.from('ministry_members').insert({ ministry_id: ministryId, user_id: user!.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ministry-memberships'] });
+      toast({ title: 'Joined ministry successfully!' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const leaveMinistry = useMutation({
+    mutationFn: async (ministryId: string) => {
+      const { error } = await supabase.from('ministry_members').delete().eq('ministry_id', ministryId).eq('user_id', user!.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ministry-memberships'] });
+      toast({ title: 'Left ministry' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const getIcon = (name: string) => {
     for (const [key, icon] of Object.entries(ministryIcons)) {
       if (name.toLowerCase().includes(key.toLowerCase().split(' ')[0].toLowerCase())) return icon;
     }
     return '⛪';
   };
+
+  const isMember = (ministryId: string) => myMemberships?.includes(ministryId);
 
   return (
     <div className="animate-fade-in">
@@ -90,6 +130,7 @@ export default function Ministries() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {ministries.map((m) => {
             const roles = getMinistryRoles(m.name);
+            const joined = isMember(m.id);
             return (
               <Card
                 key={m.id}
@@ -112,6 +153,33 @@ export default function Ministries() {
                       )}
                     </div>
                   </div>
+
+                  {/* Join / Leave Button */}
+                  {user && (
+                    <div className="mb-3">
+                      {joined ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-1.5 text-muted-foreground"
+                          onClick={() => leaveMinistry.mutate(m.id)}
+                          disabled={leaveMinistry.isPending}
+                        >
+                          <LogOut className="w-3.5 h-3.5" /> Leave Ministry
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="w-full gap-1.5"
+                          onClick={() => joinMinistry.mutate(m.id)}
+                          disabled={joinMinistry.isPending}
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Join Ministry
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Subcommittees */}
                   <div className="border-t border-border/50 pt-3 mt-2">
                     <SubcomSection ministryId={m.id} ministryName={m.name} />

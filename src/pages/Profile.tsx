@@ -4,18 +4,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { Upload, User } from 'lucide-react';
 
 export default function Profile() {
-  const { profile, fetchProfile } = useAuthStore();
+  const { profile, fetchProfile, user } = useAuthStore();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch joined ministries
+  const { data: myMinistries } = useQuery({
+    queryKey: ['my-ministries', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('ministry_members')
+        .select('ministry_id, ministries(name)')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
   const [form, setForm] = useState({
     full_name: '', phone: '', bio: '', student_id: '', department: '', year_of_study: '',
   });
@@ -130,6 +147,22 @@ export default function Profile() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Joined Ministries */}
+      {myMinistries && myMinistries.length > 0 && (
+        <Card className="border-border/50 max-w-2xl mt-6">
+          <CardHeader><CardTitle className="font-display text-lg">My Ministries</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {myMinistries.map((m: any) => (
+                <Badge key={m.ministry_id} variant="secondary" className="text-sm px-3 py-1">
+                  {m.ministries?.name || 'Ministry'}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -411,6 +411,35 @@ export type Database = {
         }
         Relationships: []
       }
+      ministry_members: {
+        Row: {
+          id: string
+          joined_at: string
+          ministry_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          ministry_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          ministry_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_members_ministry_id_fkey"
+            columns: ["ministry_id"]
+            isOneToOne: false
+            referencedRelation: "ministries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mission_reports: {
         Row: {
           challenges: string | null
