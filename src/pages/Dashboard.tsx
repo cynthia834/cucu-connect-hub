@@ -1,9 +1,12 @@
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Star, Globe, GraduationCap, Settings, BookOpen, CheckCircle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const devotionals = [
   {
@@ -14,9 +17,35 @@ const devotionals = [
 ];
 
 export default function Dashboard() {
-  const { profile, roles } = useAuthStore();
+  const { user, profile, roles } = useAuthStore();
   const devotional = devotionals[0];
   const yearLabel = profile?.year_of_study ? `${profile.year_of_study}${['st','nd','rd'][((profile.year_of_study % 100) - 20) % 10] || ['st','nd','rd'][(profile.year_of_study % 100) - 1] || 'th'} Year Student` : 'Student';
+
+  const { data: myMinistries } = useQuery({
+    queryKey: ['dashboard-ministries', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('ministry_members')
+        .select('ministry_id, ministries(name)')
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: myEnrollments } = useQuery({
+    queryKey: ['dashboard-enrollments', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('program_enrollments')
+        .select('id, progress, status, programs(name, description, completion_threshold)')
+        .eq('user_id', user!.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -41,7 +70,7 @@ export default function Dashboard() {
                     profile?.full_name?.charAt(0)?.toUpperCase() || 'U'
                   )}
                 </div>
-                {/* Ministry badges */}
+                {/* Role badges */}
                 <div className="flex flex-wrap justify-center gap-1.5 mt-1">
                   {roles.slice(0, 2).map(role => (
                     <span
@@ -77,26 +106,23 @@ export default function Dashboard() {
                   {profile?.bio || 'Passionate about worship and youth mentorship. Committed to spiritual growth through music.'}
                 </p>
 
-                {/* Achievement badges */}
-                <div className="flex gap-6 mt-5">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
-                      <Star className="w-5 h-5 text-gold" />
+                {/* Joined Ministries */}
+                <div className="mt-4">
+                  <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">My Ministries</p>
+                  {myMinistries && myMinistries.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {myMinistries.map((m) => (
+                        <Badge key={m.ministry_id} variant="secondary">
+                          {(m.ministries as any)?.name}
+                        </Badge>
+                      ))}
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Member</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Globe className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Missions</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <GraduationCap className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">CBR Grad</span>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Not enrolled in any ministry.{' '}
+                      <Link to="/ministries" className="text-primary hover:underline">Join one →</Link>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -128,32 +154,33 @@ export default function Dashboard() {
           <h2 className="font-display text-xl font-bold flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-gold" /> Enrolled Programs
           </h2>
-          <span className="text-xs font-semibold uppercase tracking-wider text-gold">
-            2 Programs Active
-          </span>
+          {myEnrollments && myEnrollments.length > 0 && (
+            <span className="text-xs font-semibold uppercase tracking-wider text-gold">
+              {myEnrollments.length} Program{myEnrollments.length !== 1 ? 's' : ''} Active
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="border-border/50">
-            <CardContent className="p-5">
-              <h3 className="font-semibold text-foreground">CBR Program</h3>
-              <p className="text-xs text-muted-foreground mt-1">Comprehensive Bible Reading</p>
-              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: '65%' }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">65% complete</p>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50">
-            <CardContent className="p-5">
-              <h3 className="font-semibold text-foreground">Discipleship</h3>
-              <p className="text-xs text-muted-foreground mt-1">New believers track</p>
-              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-gold rounded-full" style={{ width: '30%' }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">30% complete</p>
-            </CardContent>
-          </Card>
-        </div>
+        {myEnrollments && myEnrollments.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myEnrollments.map((e) => {
+              const program = e.programs as any;
+              return (
+                <Card key={e.id} className="border-border/50">
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold text-foreground">{program?.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">{program?.description}</p>
+                    <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${Number(e.progress)}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{Number(e.progress).toFixed(0)}% complete</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No enrolled programs.</p>
+        )}
       </div>
 
       {/* Announcements */}
