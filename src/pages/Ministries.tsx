@@ -1,7 +1,7 @@
 import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
@@ -17,44 +17,6 @@ const ministryIcons: Record<string, string> = {
   'Children\'s Ministry': '👶',
 };
 
-const ministryRoleGuide: Record<string, { role: string; description: string }[]> = {
-  finance: [
-    { role: 'Finance Leader', description: 'Oversees all financial operations and approvals' },
-    { role: 'Finance Subcommittee', description: 'Assists with record-keeping and audits' },
-  ],
-  assets: [
-    { role: 'Assets Leader', description: 'Manages CU property and equipment inventory' },
-    { role: 'Assets Subcommittee', description: 'Assists with tracking and maintenance' },
-  ],
-  ict: [
-    { role: 'ICT Leader', description: 'Manages tech, broadcasts, and digital platforms' },
-  ],
-  missions: [
-    { role: 'Missions Leader', description: 'Plans and coordinates evangelism outreaches' },
-  ],
-  welfare: [
-    { role: 'Welfare Officer', description: 'Handles member welfare requests and support' },
-  ],
-  content: [
-    { role: 'Content Moderator', description: 'Reviews testimonies and service updates' },
-  ],
-  leadership: [
-    { role: 'CU Chairperson', description: 'Overall CU leadership and administration' },
-    { role: 'Ministry Chairperson', description: 'Leads a specific ministry department' },
-    { role: 'Docket Leader', description: 'Manages programs and discipleship tracks' },
-  ],
-};
-
-function getMinistryRoles(name: string): { role: string; description: string }[] {
-  const lower = name.toLowerCase();
-  if (lower.includes('financ') || lower.includes('treas')) return ministryRoleGuide.finance;
-  if (lower.includes('asset') || lower.includes('propert')) return ministryRoleGuide.assets;
-  if (lower.includes('ict') || lower.includes('tech') || lower.includes('media') || lower.includes('sound')) return ministryRoleGuide.ict;
-  if (lower.includes('mission') || lower.includes('evangel')) return ministryRoleGuide.missions;
-  if (lower.includes('welfare') || lower.includes('hospital')) return ministryRoleGuide.welfare;
-  if (lower.includes('disciple') || lower.includes('bible')) return ministryRoleGuide.leadership.slice(2);
-  return ministryRoleGuide.leadership;
-}
 
 export default function Ministries() {
   const { user } = useAuthStore();
@@ -129,7 +91,6 @@ export default function Ministries() {
       ) : ministries && ministries.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {ministries.map((m) => {
-            const roles = getMinistryRoles(m.name);
             const joined = isMember(m.id);
             return (
               <Card
@@ -185,20 +146,6 @@ export default function Ministries() {
                     <SubcomSection ministryId={m.id} ministryName={m.name} />
                   </div>
 
-                  {/* Role Guide */}
-                  <div className="border-t border-border/50 pt-3 mt-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Role Guide</p>
-                    <div className="space-y-1.5">
-                      {roles.map((r) => (
-                        <div key={r.role} className="flex items-start gap-2">
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0 mt-0.5">
-                            {r.role}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground leading-tight">{r.description}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             );
