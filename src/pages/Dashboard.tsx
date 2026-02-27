@@ -1,8 +1,9 @@
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, Globe, GraduationCap, Settings, BookOpen, CheckCircle, Search } from 'lucide-react';
+import { Settings, BookOpen, CheckCircle, Search, Users, Calendar, Church, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
@@ -16,10 +17,67 @@ const devotionals = [
   },
 ];
 
+interface SearchResults {
+  members: { id: string; full_name: string }[];
+  events: { id: string; title: string }[];
+  ministries: { id: string; name: string }[];
+  programs: { id: string; name: string }[];
+}
+
+const emptyResults: SearchResults = { members: [], events: [], ministries: [], programs: [] };
+
 export default function Dashboard() {
   const { user, profile, roles } = useAuthStore();
   const devotional = devotionals[0];
   const yearLabel = profile?.year_of_study ? `${profile.year_of_study}${['st','nd','rd'][((profile.year_of_study % 100) - 20) % 10] || ['st','nd','rd'][(profile.year_of_study % 100) - 1] || 'th'} Year Student` : 'Student';
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResults>(emptyResults);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults(emptyResults);
+      setShowResults(false);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      setIsSearching(true);
+      const q = `%${searchQuery.trim()}%`;
+      const [members, events, ministries, programs] = await Promise.all([
+        supabase.from('profiles').select('id, full_name').ilike('full_name', q).limit(5),
+        supabase.from('events').select('id, title').ilike('title', q).eq('is_published', true).limit(5),
+        supabase.from('ministries').select('id, name').ilike('name', q).eq('is_active', true).limit(5),
+        supabase.from('programs').select('id, name').ilike('name', q).eq('is_active', true).limit(5),
+      ]);
+      setSearchResults({
+        members: members.data || [],
+        events: events.data || [],
+        ministries: ministries.data || [],
+        programs: programs.data || [],
+      });
+      setShowResults(true);
+      setIsSearching(false);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const hasResults = searchResults.members.length + searchResults.events.length + searchResults.ministries.length + searchResults.programs.length > 0;
 
   const { data: myMinistries } = useQuery({
     queryKey: ['dashboard-ministries', user?.id],
@@ -50,9 +108,61 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Search bar */}
-      <div className="relative max-w-xl">
+      <div className="relative max-w-xl" ref={searchRef}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search resources, events..." className="pl-10" />
+        <Input
+          placeholder="Search members, events, ministries, programs..."
+          className="pl-10"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => searchQuery.trim() && setShowResults(true)}
+        />
+        {showResults && (
+          <Card className="absolute top-full left-0 right-0 mt-1 z-50 border-border shadow-lg max-h-80 overflow-y-auto">
+            <CardContent className="p-2">
+              {isSearching ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
+              ) : !hasResults ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No results found</p>
+              ) : (
+                <>
+                  {searchResults.members.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><Users className="w-3 h-3" /> Members</p>
+                      {searchResults.members.map(m => (
+                        <Link key={m.id} to="/admin" onClick={() => setShowResults(false)} className="block px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors">{m.full_name}</Link>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.events.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Events</p>
+                      {searchResults.events.map(e => (
+                        <Link key={e.id} to="/events" onClick={() => setShowResults(false)} className="block px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors">{e.title}</Link>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.ministries.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><Church className="w-3 h-3" /> Ministries</p>
+                      {searchResults.ministries.map(m => (
+                        <Link key={m.id} to="/ministries" onClick={() => setShowResults(false)} className="block px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors">{m.name}</Link>
+                      ))}
+                    </div>
+                  )}
+                  {searchResults.programs.length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><GraduationCap className="w-3 h-3" /> Programs</p>
+                      {searchResults.programs.map(p => (
+                        <Link key={p.id} to="/programs" onClick={() => setShowResults(false)} className="block px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors">{p.name}</Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Profile + Devotional row */}
