@@ -1,27 +1,22 @@
 
 
-## Dashboard Refinements
+## Changes
 
-### Problem
-1. **Ministry display**: Dashboard shows hardcoded role badges but not the member's actual joined ministries from `ministry_members` table. No fallback message when not in any ministry.
-2. **Enrolled Programs**: Section is entirely hardcoded (fake "CBR Program" at 65%, "Discipleship" at 30%). It doesn't query `program_enrollments` or `programs` tables at all.
+### 1. Functional search bar on Dashboard (`src/pages/Dashboard.tsx`)
+- Add state for search query and results
+- On typing, query across `profiles` (by name), `events` (by title), `ministries` (by name), and `programs` (by name) using `ilike` filters
+- Show a dropdown/results list below the search input with categorized results (Members, Events, Ministries, Programs)
+- Each result links to the relevant page
+- Show "No results found" when query returns empty
+- Debounce input (300ms) to avoid excessive queries
 
-### Changes (single file: `src/pages/Dashboard.tsx`)
+### 2. Remove Role Guide from Ministries (`src/pages/Ministries.tsx`)
+- Delete the `ministryRoleGuide` object, `getMinistryRoles` function, and all related imports
+- Remove the "Role Guide" section (lines 188-201) from each ministry card
+- Ministry cards will only show: ministry info, join/leave button, and subcommittees
 
-**1. Add data fetching**
-- Import `useQuery` from `@tanstack/react-query` and `supabase` client
-- Query `ministry_members` joined with `ministries` for the current user → get ministry names
-- Query `program_enrollments` joined with `programs` for the current user → get enrolled program names + progress
-
-**2. Ministry display in Profile Card**
-- Below the bio text, show joined ministry names as badges
-- If none: show "Not enrolled in any ministry." with a link to `/ministries`
-
-**3. Replace hardcoded Enrolled Programs section**
-- Render actual enrollments with real progress bars from `program_enrollments.progress`
-- Update the "X Programs Active" counter dynamically
-- If no enrollments: show "No enrolled programs."
-- Remove the fake CBR/Discipleship cards
-
-**No database changes needed** — all required tables (`ministry_members`, `ministries`, `program_enrollments`, `programs`) already exist with appropriate RLS policies.
+### 3. Events page — no code changes needed
+- The "Create New Event" button already exists and is admin-only (line 137-141)
+- Event creation already saves to database and invalidates the query to refresh the list
+- The current implementation is correct; if events aren't appearing it may be an RLS issue — will verify the events query includes both published and admin-visible events
 
