@@ -225,7 +225,17 @@ export default function Events() {
           ))}
         </div>
       ) : (
-        <Card className="border-border/50"><CardContent className="p-12 text-center"><Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">No events found.</p></CardContent></Card>
+        <Card className="border-border/50">
+          <CardContent className="p-12 text-center">
+            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4">No events found.</p>
+            {isAdmin && (
+              <Button onClick={() => setOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" /> Create Your First Event
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

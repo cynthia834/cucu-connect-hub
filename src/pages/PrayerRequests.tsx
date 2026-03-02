@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
-import { Heart } from 'lucide-react';
+import { Heart, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export default function PrayerRequests() {
@@ -17,14 +17,22 @@ export default function PrayerRequests() {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
+  // Only fetch user's OWN prayer requests
   const { data: prayers, isLoading } = useQuery({
-    queryKey: ['prayer-requests'],
+    queryKey: ['prayer-requests', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('prayer_requests').select('*').order('created_at', { ascending: false });
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('prayer_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 
   const submitMutation = useMutation({
@@ -34,8 +42,8 @@ export default function PrayerRequests() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Prayer request submitted' });
       setTitle(''); setDescription('');
+      setSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['prayer-requests'] });
     },
     onError: (error: any) => toast({ title: 'Error', description: error.message, variant: 'destructive' }),
@@ -44,6 +52,16 @@ export default function PrayerRequests() {
   return (
     <div className="animate-fade-in">
       <PageHeader title="Prayer Requests" description="Share and intercede" />
+
+      {submitted && (
+        <Card className="border-success/30 bg-success/5 mb-6">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
+            <p className="text-sm text-foreground">Your prayer request has been submitted to the Intercessory team. They will be praying for you.</p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border/50 mb-8">
         <CardHeader><CardTitle className="font-display text-lg">Submit Prayer Request</CardTitle></CardHeader>
         <CardContent>
@@ -54,6 +72,9 @@ export default function PrayerRequests() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Only show user's own submissions */}
+      <h3 className="font-display text-lg font-semibold mb-3">My Submissions</h3>
       {isLoading ? (
         <div className="space-y-4">{[1,2].map(i => <Card key={i} className="border-border/50"><CardContent className="p-6"><div className="h-12 bg-muted animate-pulse rounded" /></CardContent></Card>)}</div>
       ) : prayers && prayers.length > 0 ? (
