@@ -623,6 +623,7 @@ export type Database = {
           student_id: string | null
           updated_at: string
           user_id: string
+          year_joined_cu: number | null
           year_of_study: number | null
         }
         Insert: {
@@ -638,6 +639,7 @@ export type Database = {
           student_id?: string | null
           updated_at?: string
           user_id: string
+          year_joined_cu?: number | null
           year_of_study?: number | null
         }
         Update: {
@@ -653,6 +655,7 @@ export type Database = {
           student_id?: string | null
           updated_at?: string
           user_id?: string
+          year_joined_cu?: number | null
           year_of_study?: number | null
         }
         Relationships: []
@@ -731,6 +734,36 @@ export type Database = {
           name?: string
           slug?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      secretary_reports: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

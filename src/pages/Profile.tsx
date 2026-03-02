@@ -34,7 +34,7 @@ export default function Profile() {
     enabled: !!user?.id,
   });
   const [form, setForm] = useState({
-    full_name: '', phone: '', bio: '', student_id: '', department: '', year_of_study: '',
+    full_name: '', phone: '', bio: '', student_id: '', department: '', year_of_study: '', year_joined_cu: '',
   });
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function Profile() {
         student_id: profile.student_id || '',
         department: profile.department || '',
         year_of_study: profile.year_of_study?.toString() || '',
+        year_joined_cu: (profile as any).year_joined_cu?.toString() || '',
       });
     }
   }, [profile]);
@@ -88,7 +89,8 @@ export default function Profile() {
           student_id: form.student_id || null,
           department: form.department || null,
           year_of_study: form.year_of_study ? parseInt(form.year_of_study) : null,
-        })
+          year_joined_cu: form.year_joined_cu ? parseInt(form.year_joined_cu) : null,
+        } as any)
         .eq('user_id', profile?.user_id);
       if (error) throw error;
       await fetchProfile();
@@ -141,7 +143,10 @@ export default function Profile() {
               <div><Label>Student ID</Label><Input value={form.student_id} onChange={e => setForm({...form, student_id: e.target.value})} maxLength={20} /></div>
               <div><Label>Year of Study</Label><Input type="number" value={form.year_of_study} onChange={e => setForm({...form, year_of_study: e.target.value})} min={1} max={6} /></div>
             </div>
-            <div><Label>Department</Label><Input value={form.department} onChange={e => setForm({...form, department: e.target.value})} maxLength={100} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Department</Label><Input value={form.department} onChange={e => setForm({...form, department: e.target.value})} maxLength={100} /></div>
+              <div><Label>Year Joined CU</Label><Input type="number" value={form.year_joined_cu} onChange={e => setForm({...form, year_joined_cu: e.target.value})} min={2000} max={new Date().getFullYear()} /></div>
+            </div>
             <div><Label>Bio</Label><Textarea value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} maxLength={500} rows={3} /></div>
             <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save Changes'}</Button>
           </form>

@@ -18,6 +18,7 @@ export default function Auth() {
   const [lastName, setLastName] = useState('');
   const [regNumber, setRegNumber] = useState('');
   const [yearOfStudy, setYearOfStudy] = useState('');
+  const [yearJoinedCU, setYearJoinedCU] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -66,6 +67,7 @@ export default function Auth() {
               full_name: fullName,
               student_id: regNumber,
               year_of_study: yearOfStudy ? parseInt(yearOfStudy) : null,
+              year_joined_cu: yearJoinedCU ? parseInt(yearJoinedCU) : null,
             },
             emailRedirectTo: window.location.origin,
           },
@@ -274,6 +276,24 @@ export default function Auth() {
                 </div>
               </div>
 
+              {/* CU Information */}
+              <div>
+                <h2 className="text-xs font-bold tracking-widest uppercase text-gold mb-4">CU Information</h2>
+                <div className="space-y-2">
+                  <Label htmlFor="yearJoinedCU">Year Joined CU *</Label>
+                  <Select value={yearJoinedCU} onValueChange={setYearJoinedCU}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: new Date().getFullYear() - 1999 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Account Credentials */}
               <div>
                 <h2 className="text-xs font-bold tracking-widest uppercase text-gold mb-4">Account Credentials</h2>
@@ -313,7 +333,7 @@ export default function Auth() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full" size="lg" disabled={loading || !yearJoinedCU}>
                 {loading ? 'Please wait...' : 'Create Account'}
               </Button>
             </form>

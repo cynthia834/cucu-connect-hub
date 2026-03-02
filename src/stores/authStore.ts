@@ -17,6 +17,7 @@ interface Profile {
   student_id: string | null;
   department: string | null;
   year_of_study: number | null;
+  year_joined_cu: number | null;
   bio: string | null;
 }
 

@@ -1,12 +1,16 @@
 import PageHeader from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BookOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Programs() {
   const { user } = useAuthStore();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: programs, isLoading } = useQuery({
     queryKey: ['programs'],
@@ -26,6 +30,23 @@ export default function Programs() {
       return data;
     },
     enabled: !!user,
+  });
+
+  const enrollMutation = useMutation({
+    mutationFn: async (programId: string) => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase.from('program_enrollments').insert({
+        user_id: user.id,
+        program_id: programId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Enrolled successfully!' });
+      queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-enrollments'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const enrolledProgramIds = new Set(enrollments?.map(e => e.program_id) || []);
@@ -64,7 +85,13 @@ export default function Programs() {
                       <p className="text-xs text-muted-foreground">Completion threshold: {Number(p.completion_threshold)}%</p>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Contact your Docket Leader to enroll.</p>
+                    <Button
+                      onClick={() => enrollMutation.mutate(p.id)}
+                      disabled={enrollMutation.isPending}
+                      className="w-full"
+                    >
+                      {enrollMutation.isPending ? 'Enrolling...' : 'Enroll in Program'}
+                    </Button>
                   )}
                 </CardContent>
               </Card>
