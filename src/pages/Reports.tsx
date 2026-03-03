@@ -93,10 +93,17 @@ export default function Reports() {
             <div><Label>Content</Label><Textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Write your report..." required maxLength={5000} rows={6} /></div>
             <div>
               <Label>Attach PDF (optional)</Label>
-              <div className="flex items-center gap-3 mt-1">
-                <Input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} />
-                {pdfFile && <span className="text-xs text-muted-foreground flex items-center gap-1"><Paperclip className="w-3 h-3" />{pdfFile.name}</span>}
-              </div>
+              {pdfFile ? (
+                <div className="flex items-center gap-3 mt-1 p-2 rounded-md bg-muted/50 border border-border">
+                  <Paperclip className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm text-foreground truncate flex-1">{pdfFile.name}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => { setPdfFile(null); const input = document.querySelector('input[type="file"]') as HTMLInputElement; if (input) input.value = ''; }}>
+                    ✕ Remove
+                  </Button>
+                </div>
+              ) : (
+                <Input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} className="mt-1" />
+              )}
             </div>
             <Button type="submit" disabled={submitMutation.isPending}>{submitMutation.isPending ? 'Submitting...' : 'Submit Report'}</Button>
           </form>

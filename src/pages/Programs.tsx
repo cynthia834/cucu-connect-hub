@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -74,15 +75,29 @@ export default function Programs() {
                 </CardHeader>
                 <CardContent>
                   {isEnrolled && enrollment ? (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{Number(enrollment.progress).toFixed(0)}%</span>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4" /> Progress
+                        </span>
+                        <Badge variant={Number(enrollment.progress) >= Number(p.completion_threshold) ? 'default' : 'secondary'}>
+                          {Number(enrollment.progress).toFixed(0)}%
+                        </Badge>
                       </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${enrollment.progress}%` }} />
+                      <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500 bg-primary"
+                          style={{ width: `${enrollment.progress}%` }}
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">Completion threshold: {Number(p.completion_threshold)}%</p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Threshold: {Number(p.completion_threshold)}%</span>
+                        {Number(enrollment.progress) >= Number(p.completion_threshold) && (
+                          <span className="flex items-center gap-1 text-primary font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <Button
