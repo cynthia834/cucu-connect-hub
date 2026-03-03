@@ -1,34 +1,35 @@
 
 
-## Plan: System Refinements & New Features
+## Plan: Logo, Reports PDF Upload, Logout Fix, Announcements + Events
 
-### 1. Fix Event Creation Visibility ✅
-- Added admin-visible "Create Your First Event" button inside the empty state card
-- Dialog and save logic were already correctly wired
+### 1. Add CU Logo to the Project
+Copy the uploaded logo image to `src/assets/cucu-logo.png`. Replace the placeholder "CU" text blocks in:
+- **`src/components/layout/AppSidebar.tsx`** — sidebar logo (line 49-51): replace the text div with an `<img>` tag importing the logo
+- **`src/pages/Index.tsx`** — landing page nav (line 12-14) and hero: replace "CU" placeholder with logo image
+- **`src/pages/Auth.tsx`** — login/registration branding panels: replace "CU" text with logo image
 
-### 2. Program Self-Enrollment ✅
-- Updated RLS policy on `program_enrollments` to allow `user_id = auth.uid()` INSERT
-- Added "Enroll in Program" button on each program card
-- Disables when already enrolled, shows "Enrolled" badge
-- Invalidates dashboard queries on success
+### 2. Reports: Add PDF Upload
+- Create a **`report-attachments`** storage bucket via migration
+- **`src/pages/Reports.tsx`**: Add a file input (`accept=".pdf"`) below the content textarea. On submit, upload the PDF to storage bucket `report-attachments/{user_id}/{filename}`, store the public URL in a new `attachment_url` column on `secretary_reports`. Display a download link on submitted reports.
+- **Database migration**: Add `attachment_url text` column to `secretary_reports`
 
-### 3. Prayer & Welfare Privacy ✅
-- Both pages now only query user's OWN submissions (filtered by `user_id`)
-- Added confirmation banner after successful submission
-- Prayer → "Submitted to Intercessory team"
-- Welfare → "Submitted to Welfare Subcommittee"
+### 3. Fix Sign Out
+The `signOut` in `authStore.ts` calls `supabase.auth.signOut()` but doesn't navigate to `/auth`. The sidebar button calls `signOut()` but there's no redirect.
+- **`src/components/layout/AppSidebar.tsx`**: After `signOut()`, use `window.location.href = '/auth'` (or `useNavigate`) to redirect to the auth page. Since `signOut` is async, wrap it: `onClick={async () => { await signOut(); window.location.href = '/auth'; }}`
 
-### 4. Add "Year Joined CU" Field ✅
-- Added `year_joined_cu` integer column to `profiles` table
-- Added mandatory select field on Auth registration (2000 to current year)
-- Added editable field on Profile page
-- Updated authStore Profile interface
+### 4. Announcements Section: Show Upcoming Events
+- **`src/pages/Dashboard.tsx`** (lines 296-307): Replace the static "No recent announcements" with a query fetching the next 3 upcoming published events (`start_date > now`, `is_published = true`, ordered ascending, limit 3). Display each event with title, date, and location. Keep the "View All →" link pointing to `/events`.
 
-### 5. Reports Submission to Secretary ✅
-- Created `secretary_reports` table with RLS (own INSERT, own+admin SELECT)
-- Built submit form with title + content
-- Users see own reports; admins/secretary see all
-- Shows confirmation banner after submission
+### Database Changes
+1. `ALTER TABLE public.secretary_reports ADD COLUMN IF NOT EXISTS attachment_url text;`
+2. `INSERT INTO storage.buckets (id, name, public) VALUES ('report-attachments', 'report-attachments', true);`
+3. Storage RLS policies for authenticated users to upload to their own folder
 
-### 6. Ministry & Dashboard ✅
-- Already implemented: Join button, role guide removed, search bar functional
+### Files Modified
+- Copy logo to `src/assets/cucu-logo.png`
+- `src/components/layout/AppSidebar.tsx` — logo + logout fix
+- `src/pages/Index.tsx` — logo on landing page
+- `src/pages/Auth.tsx` — logo on auth page
+- `src/pages/Reports.tsx` — PDF upload field + display
+- `src/pages/Dashboard.tsx` — announcements show upcoming events
+
