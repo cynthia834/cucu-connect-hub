@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Upload, User } from 'lucide-react';
+import cucuLogo from '@/assets/cucu-logo.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -97,9 +98,7 @@ export default function Auth() {
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-[420px] bg-hero-gradient items-center justify-center p-12 flex-shrink-0">
         <div className="max-w-xs text-center">
-          <div className="w-20 h-20 rounded-2xl bg-gold mx-auto mb-8 flex items-center justify-center">
-            <span className="font-display font-bold text-3xl text-primary">CU</span>
-          </div>
+          <img src={cucuLogo} alt="CUCU Logo" className="w-20 h-20 rounded-2xl mx-auto mb-8 object-cover" />
           <h1 className="font-display text-3xl font-bold text-primary-foreground mb-4">
             CUCU Portal
           </h1>
@@ -115,9 +114,7 @@ export default function Auth() {
           /* Login form - compact */
           <Card className="w-full max-w-md border-border/50 shadow-lg">
             <CardHeader className="text-center">
-              <div className="lg:hidden w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-xl">CU</span>
-              </div>
+              <img src={cucuLogo} alt="CUCU Logo" className="lg:hidden w-14 h-14 rounded-xl mx-auto mb-4 object-cover" />
               <CardTitle className="font-display text-2xl">Welcome Back</CardTitle>
               <CardDescription>Sign in to access your CUCU portal</CardDescription>
             </CardHeader>
@@ -173,9 +170,7 @@ export default function Auth() {
           /* Registration form - Figma style */
           <div className="w-full max-w-2xl">
             <div className="text-center mb-8">
-              <div className="lg:hidden w-14 h-14 rounded-xl bg-primary mx-auto mb-4 flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-xl">CU</span>
-              </div>
+              <img src={cucuLogo} alt="CUCU Logo" className="lg:hidden w-14 h-14 rounded-xl mx-auto mb-4 object-cover" />
               <h1 className="font-display text-3xl font-bold text-foreground">Registration</h1>
               <p className="text-muted-foreground mt-2">
                 Join the CUCU community. Complete the form below to get started.

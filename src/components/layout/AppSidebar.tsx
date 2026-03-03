@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import cucuLogo from '@/assets/cucu-logo.png';
 
 interface NavItem {
   label: string;
@@ -46,9 +47,7 @@ export default function AppSidebar() {
       {/* Logo */}
       <div className="p-5 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-sidebar-primary-foreground font-display font-bold text-lg">CU</span>
-          </div>
+          <img src={cucuLogo} alt="CUCU Logo" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
           <h1 className="font-display font-bold text-base text-sidebar-foreground leading-tight">
             CUCU Portal
           </h1>
@@ -101,7 +100,7 @@ export default function AppSidebar() {
             <p className="text-sm font-medium truncate">{profile?.full_name || 'Member'}</p>
             <p className="text-xs text-sidebar-foreground/50 truncate">{roles[0]?.replace(/_/g, ' ') || 'member'}</p>
           </div>
-          <button onClick={signOut} className="p-1.5 rounded hover:bg-sidebar-accent" title="Sign out">
+          <button onClick={async () => { await signOut(); window.location.href = '/auth'; }} className="p-1.5 rounded hover:bg-sidebar-accent" title="Sign out">
             <LogOut className="w-4 h-4" />
           </button>
         </div>

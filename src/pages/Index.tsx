@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Calendar, BookOpen, Users, Heart, Globe, ChevronRight } from 'lucide-react';
+import cucuLogo from '@/assets/cucu-logo.png';
 
 export default function Index() {
   return (
@@ -9,9 +10,7 @@ export default function Index() {
       <header className="bg-hero-gradient text-primary-foreground">
         <nav className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gold flex items-center justify-center">
-              <span className="font-display font-bold text-navy-deep text-lg">CU</span>
-            </div>
+            <img src={cucuLogo} alt="CUCU Logo" className="w-10 h-10 rounded-lg object-cover" />
             <span className="font-display font-bold text-lg">CUCU</span>
           </div>
           <Link to="/auth"><Button variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">Sign In</Button></Link>

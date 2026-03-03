@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, CheckCircle } from 'lucide-react';
+import { FileText, CheckCircle, Paperclip, Download } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 
@@ -19,6 +19,7 @@ export default function Reports() {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   const { data: reports, isLoading } = useQuery({
@@ -40,15 +41,24 @@ export default function Reports() {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
+      let attachmentUrl: string | null = null;
+      if (pdfFile) {
+        const path = `${user.id}/${Date.now()}_${pdfFile.name}`;
+        const { error: uploadError } = await supabase.storage.from('report-attachments').upload(path, pdfFile);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('report-attachments').getPublicUrl(path);
+        attachmentUrl = publicUrl;
+      }
       const { error } = await supabase.from('secretary_reports').insert({
         user_id: user.id,
         title,
         content,
-      });
+        attachment_url: attachmentUrl,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
-      setTitle(''); setContent('');
+      setTitle(''); setContent(''); setPdfFile(null);
       setSubmitted(true);
       queryClient.invalidateQueries({ queryKey: ['secretary-reports'] });
       toast({ title: 'Report submitted to Secretary' });
@@ -81,6 +91,13 @@ export default function Reports() {
           <form onSubmit={e => { e.preventDefault(); submitMutation.mutate(); }} className="space-y-4">
             <div><Label>Title</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Report title" required maxLength={200} /></div>
             <div><Label>Content</Label><Textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Write your report..." required maxLength={5000} rows={6} /></div>
+            <div>
+              <Label>Attach PDF (optional)</Label>
+              <div className="flex items-center gap-3 mt-1">
+                <Input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} />
+                {pdfFile && <span className="text-xs text-muted-foreground flex items-center gap-1"><Paperclip className="w-3 h-3" />{pdfFile.name}</span>}
+              </div>
+            </div>
             <Button type="submit" disabled={submitMutation.isPending}>{submitMutation.isPending ? 'Submitting...' : 'Submit Report'}</Button>
           </form>
         </CardContent>
@@ -104,6 +121,11 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground text-sm whitespace-pre-wrap">{r.content}</p>
+                {r.attachment_url && (
+                  <a href={r.attachment_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-sm text-primary hover:underline">
+                    <Download className="w-4 h-4" /> Download Attachment
+                  </a>
+                )}
               </CardContent>
             </Card>
           ))}
