@@ -3,11 +3,12 @@ import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, BookOpen, CheckCircle, Search, Users, Calendar, Church, GraduationCap } from 'lucide-react';
+import { Settings, BookOpen, CheckCircle, Search, Users, Calendar, Church, GraduationCap, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 const devotionals = [
   {
@@ -293,18 +294,60 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Announcements */}
-      <Card className="border-border/50">
-        <CardHeader>
-          <CardTitle className="font-display text-xl">Announcements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">No recent announcements.</p>
-          <Link to="/service-updates" className="text-sm text-primary hover:underline inline-block mt-2">
-            View All →
-          </Link>
-        </CardContent>
-      </Card>
+      {/* Announcements — Upcoming Events */}
+      <AnnouncementsSection />
     </div>
+  );
+}
+
+function AnnouncementsSection() {
+  const { data: upcomingEvents, isLoading } = useQuery({
+    queryKey: ['upcoming-events-dashboard'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title, start_date, location')
+        .eq('is_published', true)
+        .gte('start_date', new Date().toISOString())
+        .order('start_date', { ascending: true })
+        .limit(3);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  return (
+    <Card className="border-border/50">
+      <CardHeader>
+        <CardTitle className="font-display text-xl flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-primary" /> Announcements
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">{[1, 2].map(i => <div key={i} className="h-10 bg-muted animate-pulse rounded" />)}</div>
+        ) : upcomingEvents && upcomingEvents.length > 0 ? (
+          <div className="space-y-3">
+            {upcomingEvents.map(ev => (
+              <div key={ev.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <Calendar className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-sm text-foreground truncate">{ev.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(ev.start_date), 'EEE, MMM d · h:mm a')}
+                    {ev.location && <span className="inline-flex items-center gap-0.5 ml-2"><MapPin className="w-3 h-3" />{ev.location}</span>}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No upcoming events.</p>
+        )}
+        <Link to="/events" className="text-sm text-primary hover:underline inline-block mt-3">
+          View All Events →
+        </Link>
+      </CardContent>
+    </Card>
   );
 }
