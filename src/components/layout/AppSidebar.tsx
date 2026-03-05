@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Calendar, BookOpen, Users, Heart, HandCoins,
   DollarSign, Package, Globe, Wifi, MessageSquare, FileText,
-  LogOut, Shield, Church, Megaphone, Settings
+  LogOut, Shield, Church, Megaphone, Settings, Award, LifeBuoy, BookMarked
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,8 @@ const navItems: NavItem[] = [
   { label: 'Welfare', path: '/welfare', icon: Users },
   { label: 'Missions', path: '/missions', icon: Globe },
   { label: 'Service Updates', path: '/service-updates', icon: Megaphone },
+  { label: 'CBR Reading', path: '/cbr-reading', icon: BookMarked },
+  { label: 'Certificates', path: '/certificates', icon: Award },
   { label: 'Finance', path: '/finance', icon: DollarSign, roles: ['super_admin', 'cu_chairperson', 'finance_leader', 'finance_subcommittee'] },
   { label: 'Assets', path: '/assets', icon: Package, roles: ['super_admin', 'cu_chairperson', 'assets_leader', 'assets_subcommittee'] },
   { label: 'ICT & Media', path: '/ict', icon: Wifi, roles: ['super_admin', 'cu_chairperson', 'ict_leader'] },
@@ -77,8 +79,15 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      {/* Settings link */}
-      <div className="px-3 pb-2">
+      {/* Bottom links */}
+      <div className="px-3 pb-2 space-y-0.5">
+        <Link
+          to="/contact-support"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <LifeBuoy className="w-5 h-5" />
+          <span>Support</span>
+        </Link>
         <Link
           to="/profile"
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"

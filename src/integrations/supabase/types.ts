@@ -205,6 +205,41 @@ export type Database = {
           },
         ]
       }
+      cbr_reading_progress: {
+        Row: {
+          cbr_plan_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          user_id: string
+        }
+        Insert: {
+          cbr_plan_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          user_id: string
+        }
+        Update: {
+          cbr_plan_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cbr_reading_progress_cbr_plan_id_fkey"
+            columns: ["cbr_plan_id"]
+            isOneToOne: false
+            referencedRelation: "cbr_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -922,6 +957,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       testimonies: {
         Row: {
