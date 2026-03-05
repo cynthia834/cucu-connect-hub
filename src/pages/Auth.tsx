@@ -156,7 +156,32 @@ export default function Auth() {
                   {loading ? 'Please wait...' : 'Sign In'}
                 </Button>
               </form>
-              <div className="mt-6 text-center">
+              <div className="mt-4 text-center">
+                <button
+                  onClick={async () => {
+                    if (!email) {
+                      toast({ title: 'Enter your email first', description: 'Type your email address above, then click Forgot Password.', variant: 'destructive' });
+                      return;
+                    }
+                    setLoading(true);
+                    try {
+                      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) throw error;
+                      toast({ title: 'Reset link sent', description: 'Check your email for a password reset link.' });
+                    } catch (err: any) {
+                      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+              <div className="mt-2 text-center">
                 <button
                   onClick={() => setIsLogin(false)}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"

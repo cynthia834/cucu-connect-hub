@@ -28,6 +28,10 @@ import Reports from "./pages/Reports";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import SubcomDetail from "./pages/SubcomDetail";
+import ResetPassword from "./pages/ResetPassword";
+import CBRReading from "./pages/CBRReading";
+import Certificates from "./pages/Certificates";
+import ContactSupport from "./pages/ContactSupport";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +51,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/events" element={<Events />} />
@@ -65,6 +70,9 @@ const App = () => (
               <Route path="/admin" element={<ProtectedRoute requiredRoles={['super_admin','cu_chairperson']}><Admin /></ProtectedRoute>} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/subcoms/:id" element={<SubcomDetail />} />
+              <Route path="/cbr-reading" element={<CBRReading />} />
+              <Route path="/certificates" element={<Certificates />} />
+              <Route path="/contact-support" element={<ContactSupport />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
