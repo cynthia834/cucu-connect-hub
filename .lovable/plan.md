@@ -1,35 +1,79 @@
 
 
-## Plan: Logo, Reports PDF Upload, Logout Fix, Announcements + Events
+## Plan: Forgot Password, CBR Tracking, Dashboard Redesign, Certifications, Contact Support
 
-### 1. Add CU Logo to the Project
-Copy the uploaded logo image to `src/assets/cucu-logo.png`. Replace the placeholder "CU" text blocks in:
-- **`src/components/layout/AppSidebar.tsx`** — sidebar logo (line 49-51): replace the text div with an `<img>` tag importing the logo
-- **`src/pages/Index.tsx`** — landing page nav (line 12-14) and hero: replace "CU" placeholder with logo image
-- **`src/pages/Auth.tsx`** — login/registration branding panels: replace "CU" text with logo image
+### 1. Forgot Password Flow
+**Files**: `src/pages/Auth.tsx`, new `src/pages/ResetPassword.tsx`, `src/App.tsx`
 
-### 2. Reports: Add PDF Upload
-- Create a **`report-attachments`** storage bucket via migration
-- **`src/pages/Reports.tsx`**: Add a file input (`accept=".pdf"`) below the content textarea. On submit, upload the PDF to storage bucket `report-attachments/{user_id}/{filename}`, store the public URL in a new `attachment_url` column on `secretary_reports`. Display a download link on submitted reports.
-- **Database migration**: Add `attachment_url text` column to `secretary_reports`
+- Add "Forgot Password?" link below login form
+- On click, show email input + call `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })`
+- Create `/reset-password` page that checks for `type=recovery` in URL hash, shows new password form, calls `supabase.auth.updateUser({ password })`
+- Register `/reset-password` as a public route in App.tsx
 
-### 3. Fix Sign Out
-The `signOut` in `authStore.ts` calls `supabase.auth.signOut()` but doesn't navigate to `/auth`. The sidebar button calls `signOut()` but there's no redirect.
-- **`src/components/layout/AppSidebar.tsx`**: After `signOut()`, use `window.location.href = '/auth'` (or `useNavigate`) to redirect to the auth page. Since `signOut` is async, wrap it: `onClick={async () => { await signOut(); window.location.href = '/auth'; }}`
+### 2. CBR Reading Tracker
+**Database migration**: Create `cbr_reading_progress` table:
+- `id` (uuid PK), `user_id` (uuid), `cbr_plan_id` (uuid FK → cbr_plans), `is_completed` (boolean, default false), `completed_at` (timestamptz), `created_at`
+- RLS: users can INSERT/UPDATE/SELECT their own rows; admins can SELECT all
+- Unique constraint on (user_id, cbr_plan_id)
 
-### 4. Announcements Section: Show Upcoming Events
-- **`src/pages/Dashboard.tsx`** (lines 296-307): Replace the static "No recent announcements" with a query fetching the next 3 upcoming published events (`start_date > now`, `is_published = true`, ordered ascending, limit 3). Display each event with title, date, and location. Keep the "View All →" link pointing to `/events`.
+**File**: New `src/pages/CBRReading.tsx`
+- Fetch `cbr_plans` for the user's enrolled CBR program
+- Show each week/chapter with a checkbox to mark as read
+- Display overall progress bar (completed / total chapters as percentage)
+- Auto-update `program_enrollments.progress` when readings are marked (via a DB function or client-side calculation)
 
-### Database Changes
-1. `ALTER TABLE public.secretary_reports ADD COLUMN IF NOT EXISTS attachment_url text;`
-2. `INSERT INTO storage.buckets (id, name, public) VALUES ('report-attachments', 'report-attachments', true);`
-3. Storage RLS policies for authenticated users to upload to their own folder
+**File**: `src/App.tsx` — add `/cbr-reading` route
+**File**: `src/components/layout/AppSidebar.tsx` — add "CBR Reading" nav item under Programs or as sub-item
 
-### Files Modified
-- Copy logo to `src/assets/cucu-logo.png`
-- `src/components/layout/AppSidebar.tsx` — logo + logout fix
-- `src/pages/Index.tsx` — logo on landing page
-- `src/pages/Auth.tsx` — logo on auth page
-- `src/pages/Reports.tsx` — PDF upload field + display
-- `src/pages/Dashboard.tsx` — announcements show upcoming events
+### 3. Dashboard Redesign
+**File**: `src/pages/Dashboard.tsx` — modernize layout:
+- Add a greeting banner with time-based greeting ("Good morning, [Name]")
+- Reorganize into a grid with quick-stat cards (My Ministries count, Programs enrolled, Upcoming events count)
+- Move search bar into the top section with better styling
+- Improve enrolled programs section with card-based progress displays
+- Add a quick-actions row (Join Ministry, Enroll in Program, Submit Report, Contact Support)
+- Better visual hierarchy with section dividers and icons
+
+### 4. Certifications Page
+**File**: New `src/pages/Certificates.tsx`
+
+Referencing the uploaded Figma screenshot — create a "Member Certifications" page with:
+- Page header: "Member Certifications" + description
+- Tabs: All Certificates, Completed, In Progress, Not Started
+- Certificate cards showing: certificate name, description, status (Available/Locked/In Progress), and a download button for completed ones
+- Certificate types derived from program enrollments:
+  - CU Membership Certificate (available to all active members)
+  - CBR Completion Certificate (when CBR progress ≥ threshold)
+  - Program-specific certificates (when enrollment progress ≥ completion_threshold)
+- For "download," generate a simple styled HTML-to-canvas or printable certificate page (no external service needed)
+
+**File**: `src/App.tsx` — add `/certificates` route
+**File**: `src/components/layout/AppSidebar.tsx` — add "Certificates" nav item
+
+### 5. Contact Support
+**File**: New `src/pages/ContactSupport.tsx`
+- Simple form: subject, message, optional email (pre-filled from profile)
+- On submit, insert into a new `support_tickets` table
+- Show confirmation message and list of user's own past tickets with status
+
+**Database migration**: Create `support_tickets` table:
+- `id` (uuid PK), `user_id` (uuid), `subject` (text), `message` (text), `status` (text, default 'open'), `created_at`, `updated_at`
+- RLS: users INSERT/SELECT own; admins SELECT all
+
+**File**: `src/App.tsx` — add `/contact-support` route
+**File**: `src/components/layout/AppSidebar.tsx` — add "Support" nav item at bottom
+
+### Summary of Database Changes
+1. New table `cbr_reading_progress` with RLS
+2. New table `support_tickets` with RLS
+
+### Files Modified/Created
+- `src/pages/Auth.tsx` — forgot password link + flow
+- `src/pages/ResetPassword.tsx` — new page
+- `src/pages/CBRReading.tsx` — new page
+- `src/pages/Dashboard.tsx` — redesigned layout
+- `src/pages/Certificates.tsx` — new page
+- `src/pages/ContactSupport.tsx` — new page
+- `src/App.tsx` — new routes
+- `src/components/layout/AppSidebar.tsx` — new nav items
 
