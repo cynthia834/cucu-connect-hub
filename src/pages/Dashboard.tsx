@@ -6,10 +6,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Search, Users, Calendar, Church, GraduationCap, MapPin,
   BookOpen, CheckCircle, ArrowRight, LifeBuoy,
-  FileText, HandCoins, Sun, Moon, Sunrise
+  FileText, Sun, Moon, Sunrise, Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -35,19 +36,11 @@ function getInitials(name?: string | null) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-const statCardColors = [
-  { bg: 'bg-primary/10', text: 'text-primary', ring: 'ring-primary/20' },
-  { bg: 'bg-secondary/20', text: 'text-secondary-foreground', ring: 'ring-secondary/30' },
-  { bg: 'bg-[hsl(var(--success))]/10', text: 'text-[hsl(var(--success))]', ring: 'ring-[hsl(var(--success))]/20' },
-  { bg: 'bg-[hsl(var(--warning))]/10', text: 'text-[hsl(var(--warning))]', ring: 'ring-[hsl(var(--warning))]/20' },
-];
-
 export default function Dashboard() {
   const { user, profile, roles } = useAuthStore();
   const greeting = getGreeting();
   const GreetIcon = greeting.icon;
 
-  // Search
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResults>(emptyResults);
   const [isSearching, setIsSearching] = useState(false);
@@ -114,6 +107,20 @@ export default function Dashboard() {
     },
   });
 
+  const { data: todayReading } = useQuery({
+    queryKey: ['today-cbr-reading', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cbr_plans')
+        .select('id, title, scripture_reference, content')
+        .order('week_number', { ascending: true })
+        .limit(1);
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!user,
+  });
+
   const quickActions = [
     { label: 'Join Ministry', icon: Church, to: '/ministries' },
     { label: 'Enroll Program', icon: GraduationCap, to: '/programs' },
@@ -128,80 +135,171 @@ export default function Dashboard() {
     { icon: Users, label: 'Roles', value: roles.length, to: '/profile' },
   ];
 
+  const statColors = [
+    'bg-primary/10 text-primary ring-primary/20',
+    'bg-secondary/20 text-secondary-foreground ring-secondary/30',
+    'bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] ring-[hsl(var(--success))]/20',
+    'bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))] ring-[hsl(var(--warning))]/20',
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Greeting Banner with Avatar */}
-      <div className="relative rounded-2xl overflow-hidden border border-border/50 p-6 sm:p-8"
-        style={{ background: 'linear-gradient(135deg, hsl(220 60% 15%), hsl(220 60% 25%), hsl(220 50% 30%))' }}>
-        {/* Decorative pattern */}
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-        <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            <Avatar className="w-16 h-16 ring-[3px] ring-secondary shadow-lg">
-              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'Member'} />
-              <AvatarFallback className="bg-secondary text-secondary-foreground text-xl font-bold">
-                {getInitials(profile?.full_name)}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <GreetIcon className="w-5 h-5 text-secondary" />
-              <span className="text-secondary font-medium text-sm">{greeting.text}</span>
-            </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold text-primary-foreground truncate">
-              {profile?.full_name || 'Member'}
-            </h1>
-            {roles.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {roles.slice(0, 3).map(r => (
-                  <Badge key={r} variant="secondary" className="text-[10px] px-2 py-0.5 bg-secondary/20 text-secondary border-secondary/30">
-                    {r.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-                {roles.length > 3 && (
-                  <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-secondary/20 text-secondary border-secondary/30">
-                    +{roles.length - 3} more
-                  </Badge>
+      {/* Search bar */}
+      <div className="relative w-full" ref={searchRef}>
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search members, events, ministries..."
+          className="pl-10 bg-card border-border"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onFocus={() => searchQuery.trim() && setShowResults(true)}
+        />
+        {showResults && (
+          <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl max-h-72 overflow-y-auto">
+            <CardContent className="p-2">
+              {isSearching ? <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
+                : !hasResults ? <p className="text-sm text-muted-foreground text-center py-4">No results</p>
+                : <>
+                  {searchResults.members.length > 0 && <SearchGroup icon={Users} label="Members" items={searchResults.members.map(m => ({ id: m.id, text: m.full_name, to: '/admin' }))} onClose={() => setShowResults(false)} />}
+                  {searchResults.events.length > 0 && <SearchGroup icon={Calendar} label="Events" items={searchResults.events.map(e => ({ id: e.id, text: e.title, to: '/events' }))} onClose={() => setShowResults(false)} />}
+                  {searchResults.ministries.length > 0 && <SearchGroup icon={Church} label="Ministries" items={searchResults.ministries.map(m => ({ id: m.id, text: m.name, to: '/ministries' }))} onClose={() => setShowResults(false)} />}
+                  {searchResults.programs.length > 0 && <SearchGroup icon={GraduationCap} label="Programs" items={searchResults.programs.map(p => ({ id: p.id, text: p.name, to: '/programs' }))} onClose={() => setShowResults(false)} />}
+                </>}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Profile Card + Daily Devotional Row */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+        {/* Profile Card */}
+        <Card className="border-border/50 overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-5">
+              {/* Avatar */}
+              <div className="flex-shrink-0 flex sm:block justify-center">
+                <Avatar className="w-24 h-24 ring-[3px] ring-secondary shadow-lg">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'Member'} />
+                  <AvatarFallback className="bg-muted text-muted-foreground text-3xl font-display font-bold">
+                    {getInitials(profile?.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <GreetIcon className="w-4 h-4 text-secondary" />
+                      <span className="text-secondary text-sm font-medium">{greeting.text}</span>
+                    </div>
+                    <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                      {profile?.full_name || 'Member'}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {profile?.department ? `${profile.department}` : 'Student'} • Christian Union
+                    </p>
+                  </div>
+                  <Link to="/profile" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1">
+                    <Settings className="w-3.5 h-3.5" /> Edit Bio
+                  </Link>
+                </div>
+
+                {profile?.bio && (
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed line-clamp-2">{profile.bio}</p>
                 )}
+
+                {/* Role badge */}
+                {roles.length > 0 && (
+                  <div className="mt-3">
+                    <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider border-foreground/30 text-foreground px-3 py-1">
+                      {roles[0].replace(/_/g, ' ')}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* My Ministries */}
+                <div className="mt-4">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">My Ministries</p>
+                  {myMinistries && myMinistries.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {myMinistries.map((m: any) => (
+                        <Badge key={m.ministry_id} variant="outline" className="bg-secondary/10 border-secondary/40 text-secondary-foreground text-xs px-3 py-1 font-medium">
+                          {(m.ministries as any)?.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Not yet joined any ministry. <Link to="/ministries" className="text-primary hover:underline">Join one →</Link>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Devotional Card */}
+        <Card className="border-0 overflow-hidden shadow-md" style={{ background: 'hsl(var(--secondary))' }}>
+          <CardContent className="p-6 flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-4">
+              <BookOpen className="w-5 h-5 text-secondary-foreground" />
+              <h3 className="font-display text-lg font-bold text-secondary-foreground">Daily Devotional</h3>
+            </div>
+            {todayReading ? (
+              <div className="flex-1 flex flex-col">
+                <p className="font-bold text-secondary-foreground text-sm mb-2">
+                  {todayReading.scripture_reference || todayReading.title}
+                </p>
+                <blockquote className="text-secondary-foreground/90 text-sm leading-relaxed mb-3 flex-1">
+                  "{todayReading.content || 'Worship the Lord with gladness; come before him with joyful songs.'}"
+                </blockquote>
+                <p className="text-secondary-foreground/70 text-sm italic mb-4">
+                  Reflect: How can your melody today bring glory to His name?
+                </p>
+                <Link to="/cbr-reading">
+                  <Button variant="outline" size="sm" className="bg-card/20 border-secondary-foreground/30 text-secondary-foreground hover:bg-card/30 w-full">
+                    <CheckCircle className="w-4 h-4 mr-2" /> Mark as Read
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col justify-center text-center">
+                <p className="text-secondary-foreground/80 text-sm mb-3">
+                  "The Lord is my shepherd; I shall not want." — Psalm 23:1
+                </p>
+                <p className="text-secondary-foreground/60 text-xs italic mb-4">
+                  Reflect: Where is God leading you today?
+                </p>
+                <Link to="/cbr-reading">
+                  <Button variant="outline" size="sm" className="bg-card/20 border-secondary-foreground/30 text-secondary-foreground hover:bg-card/30">
+                    <BookOpen className="w-4 h-4 mr-2" /> View CBR Plan
+                  </Button>
+                </Link>
               </div>
             )}
-          </div>
-          {/* Search */}
-          <div className="relative w-full sm:w-72" ref={searchRef}>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search members, events..."
-              className="pl-10 bg-background/90 backdrop-blur-sm border-border/50"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onFocus={() => searchQuery.trim() && setShowResults(true)}
-            />
-            {showResults && (
-              <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl max-h-72 overflow-y-auto border-border/50">
-                <CardContent className="p-2">
-                  {isSearching ? <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
-                    : !hasResults ? <p className="text-sm text-muted-foreground text-center py-4">No results</p>
-                    : <>
-                      {searchResults.members.length > 0 && <SearchGroup icon={Users} label="Members" items={searchResults.members.map(m => ({ id: m.id, text: m.full_name, to: '/admin' }))} onClose={() => setShowResults(false)} />}
-                      {searchResults.events.length > 0 && <SearchGroup icon={Calendar} label="Events" items={searchResults.events.map(e => ({ id: e.id, text: e.title, to: '/events' }))} onClose={() => setShowResults(false)} />}
-                      {searchResults.ministries.length > 0 && <SearchGroup icon={Church} label="Ministries" items={searchResults.ministries.map(m => ({ id: m.id, text: m.name, to: '/ministries' }))} onClose={() => setShowResults(false)} />}
-                      {searchResults.programs.length > 0 && <SearchGroup icon={GraduationCap} label="Programs" items={searchResults.programs.map(p => ({ id: p.id, text: p.name, to: '/programs' }))} onClose={() => setShowResults(false)} />}
-                    </>}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statItems.map((s, i) => (
-          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} to={s.to} colorIdx={i} />
+          <Link key={s.label} to={s.to}>
+            <Card className="border-border/50 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ring-1 ${statColors[i]}`}>
+                  <s.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -256,10 +354,7 @@ export default function Dashboard() {
                       <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-1.5">
                         <div
                           className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${progress}%`,
-                            background: 'linear-gradient(90deg, hsl(220 60% 20%), hsl(45 80% 55%))',
-                          }}
+                          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, hsl(220 60% 20%), hsl(45 80% 55%))' }}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground font-medium">{progress.toFixed(0)}% complete</p>
@@ -289,7 +384,6 @@ export default function Dashboard() {
                   const d = new Date(ev.start_date);
                   return (
                     <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors">
-                      {/* Date badge */}
                       <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-primary flex flex-col items-center justify-center text-primary-foreground">
                         <span className="text-xs font-medium leading-none">{format(d, 'MMM').toUpperCase()}</span>
                         <span className="text-lg font-bold leading-none">{format(d, 'd')}</span>
@@ -313,25 +407,6 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, to, colorIdx }: { icon: React.ElementType; label: string; value: number; to: string; colorIdx: number }) {
-  const colors = statCardColors[colorIdx % statCardColors.length];
-  return (
-    <Link to={to}>
-      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-        <CardContent className="p-4 flex items-center gap-3">
-          <div className={`w-11 h-11 rounded-xl ${colors.bg} flex items-center justify-center ring-1 ${colors.ring}`}>
-            <Icon className={`w-5 h-5 ${colors.text}`} />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
-            <p className="text-xs text-muted-foreground">{label}</p>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
   );
 }
 
