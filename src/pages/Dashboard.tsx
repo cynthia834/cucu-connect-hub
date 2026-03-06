@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Search, Users, Calendar, Church, GraduationCap, MapPin,
-  BookOpen, CheckCircle, Settings, ArrowRight, LifeBuoy,
+  BookOpen, CheckCircle, ArrowRight, LifeBuoy,
   FileText, HandCoins, Sun, Moon, Sunrise
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -29,6 +29,18 @@ function getGreeting() {
   if (h < 17) return { text: 'Good Afternoon', icon: Sun };
   return { text: 'Good Evening', icon: Moon };
 }
+
+function getInitials(name?: string | null) {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+const statCardColors = [
+  { bg: 'bg-primary/10', text: 'text-primary', ring: 'ring-primary/20' },
+  { bg: 'bg-secondary/20', text: 'text-secondary-foreground', ring: 'ring-secondary/30' },
+  { bg: 'bg-[hsl(var(--success))]/10', text: 'text-[hsl(var(--success))]', ring: 'ring-[hsl(var(--success))]/20' },
+  { bg: 'bg-[hsl(var(--warning))]/10', text: 'text-[hsl(var(--warning))]', ring: 'ring-[hsl(var(--warning))]/20' },
+];
 
 export default function Dashboard() {
   const { user, profile, roles } = useAuthStore();
@@ -109,29 +121,67 @@ export default function Dashboard() {
     { label: 'Contact Support', icon: LifeBuoy, to: '/contact-support' },
   ];
 
+  const statItems = [
+    { icon: Church, label: 'My Ministries', value: myMinistries?.length || 0, to: '/ministries' },
+    { icon: GraduationCap, label: 'Programs', value: myEnrollments?.length || 0, to: '/programs' },
+    { icon: Calendar, label: 'Upcoming Events', value: upcomingEvents?.length || 0, to: '/events' },
+    { icon: Users, label: 'Roles', value: roles.length, to: '/profile' },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Greeting Banner + Search */}
-      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-border/50 p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
-              <GreetIcon className="w-6 h-6 text-primary" />
-              {greeting.text}, {profile?.full_name?.split(' ')[0] || 'Member'}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">Welcome to your CUCU dashboard.</p>
+      {/* Greeting Banner with Avatar */}
+      <div className="relative rounded-2xl overflow-hidden border border-border/50 p-6 sm:p-8"
+        style={{ background: 'linear-gradient(135deg, hsl(220 60% 15%), hsl(220 60% 25%), hsl(220 50% 30%))' }}>
+        {/* Decorative pattern */}
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* Avatar */}
+          <div className="flex-shrink-0">
+            <Avatar className="w-16 h-16 ring-[3px] ring-secondary shadow-lg">
+              <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'Member'} />
+              <AvatarFallback className="bg-secondary text-secondary-foreground text-xl font-bold">
+                {getInitials(profile?.full_name)}
+              </AvatarFallback>
+            </Avatar>
           </div>
-          <div className="relative w-full sm:w-80" ref={searchRef}>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <GreetIcon className="w-5 h-5 text-secondary" />
+              <span className="text-secondary font-medium text-sm">{greeting.text}</span>
+            </div>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-primary-foreground truncate">
+              {profile?.full_name || 'Member'}
+            </h1>
+            {roles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {roles.slice(0, 3).map(r => (
+                  <Badge key={r} variant="secondary" className="text-[10px] px-2 py-0.5 bg-secondary/20 text-secondary border-secondary/30">
+                    {r.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+                {roles.length > 3 && (
+                  <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-secondary/20 text-secondary border-secondary/30">
+                    +{roles.length - 3} more
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Search */}
+          <div className="relative w-full sm:w-72" ref={searchRef}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search members, events..."
-              className="pl-10 bg-background"
+              className="pl-10 bg-background/90 backdrop-blur-sm border-border/50"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onFocus={() => searchQuery.trim() && setShowResults(true)}
             />
             {showResults && (
-              <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-lg max-h-72 overflow-y-auto">
+              <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl max-h-72 overflow-y-auto border-border/50">
                 <CardContent className="p-2">
                   {isSearching ? <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
                     : !hasResults ? <p className="text-sm text-muted-foreground text-center py-4">No results</p>
@@ -150,22 +200,23 @@ export default function Dashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Church} label="My Ministries" value={myMinistries?.length || 0} to="/ministries" />
-        <StatCard icon={GraduationCap} label="Programs" value={myEnrollments?.length || 0} to="/programs" />
-        <StatCard icon={Calendar} label="Upcoming Events" value={upcomingEvents?.length || 0} to="/events" />
-        <StatCard icon={Users} label="Roles" value={roles.length} to="/profile" />
+        {statItems.map((s, i) => (
+          <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} to={s.to} colorIdx={i} />
+        ))}
       </div>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {quickActions.map(a => (
           <Link key={a.to} to={a.to}>
-            <Card className="border-border/50 hover:border-primary/30 transition-colors cursor-pointer group">
-              <CardContent className="p-4 flex items-center gap-3">
+            <Card className="border-border/50 hover:border-primary/40 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer group overflow-hidden">
+              <CardContent className="p-4 flex items-center gap-3 relative">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                   <a.icon className="w-4 h-4 text-primary" />
                 </div>
-                <span className="text-sm font-medium text-foreground">{a.label}</span>
+                <span className="text-sm font-medium text-foreground flex-1">{a.label}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
               </CardContent>
             </Card>
           </Link>
@@ -192,24 +243,34 @@ export default function Dashboard() {
                 const threshold = Number(program?.completion_threshold || 90);
                 const isComplete = progress >= threshold;
                 return (
-                  <Card key={e.id} className="border-border/50">
+                  <Card key={e.id} className="border-border/50 hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start justify-between mb-3">
                         <h3 className="font-semibold text-sm text-foreground">{program?.name}</h3>
-                        {isComplete && <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />}
+                        {isComplete && (
+                          <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] border-0">
+                            <CheckCircle className="w-3 h-3 mr-0.5" /> Done
+                          </Badge>
+                        )}
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden mb-1">
-                        <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                      <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${progress}%`,
+                            background: 'linear-gradient(90deg, hsl(220 60% 20%), hsl(45 80% 55%))',
+                          }}
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">{progress.toFixed(0)}% complete</p>
+                      <p className="text-xs text-muted-foreground font-medium">{progress.toFixed(0)}% complete</p>
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
           ) : (
-            <Card><CardContent className="py-6 text-center text-sm text-muted-foreground">
-              No enrolled programs. <Link to="/programs" className="text-primary hover:underline">Browse programs →</Link>
+            <Card className="border-border/50"><CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No enrolled programs. <Link to="/programs" className="text-primary hover:underline font-medium">Browse programs →</Link>
             </CardContent></Card>
           )}
         </div>
@@ -224,23 +285,30 @@ export default function Dashboard() {
           <CardContent>
             {upcomingEvents && upcomingEvents.length > 0 ? (
               <div className="space-y-3">
-                {upcomingEvents.map(ev => (
-                  <div key={ev.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <Calendar className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm text-foreground truncate">{ev.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(ev.start_date), 'EEE, MMM d · h:mm a')}
-                        {ev.location && <span className="inline-flex items-center gap-0.5 ml-2"><MapPin className="w-3 h-3" />{ev.location}</span>}
-                      </p>
+                {upcomingEvents.map(ev => {
+                  const d = new Date(ev.start_date);
+                  return (
+                    <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors">
+                      {/* Date badge */}
+                      <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-primary flex flex-col items-center justify-center text-primary-foreground">
+                        <span className="text-xs font-medium leading-none">{format(d, 'MMM').toUpperCase()}</span>
+                        <span className="text-lg font-bold leading-none">{format(d, 'd')}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm text-foreground truncate">{ev.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {format(d, 'EEE · h:mm a')}
+                          {ev.location && <span className="inline-flex items-center gap-0.5 ml-2"><MapPin className="w-3 h-3" />{ev.location}</span>}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">No upcoming events.</p>
             )}
-            <Link to="/events" className="text-sm text-primary hover:underline inline-block mt-3">View All Events →</Link>
+            <Link to="/events" className="text-sm text-primary hover:underline inline-block mt-3 font-medium">View All Events →</Link>
           </CardContent>
         </Card>
       </div>
@@ -248,13 +316,14 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, to }: { icon: React.ElementType; label: string; value: number; to: string }) {
+function StatCard({ icon: Icon, label, value, to, colorIdx }: { icon: React.ElementType; label: string; value: number; to: string; colorIdx: number }) {
+  const colors = statCardColors[colorIdx % statCardColors.length];
   return (
     <Link to={to}>
-      <Card className="border-border/50 hover:border-primary/30 transition-colors">
+      <Card className="border-border/50 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
         <CardContent className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-primary" />
+          <div className={`w-11 h-11 rounded-xl ${colors.bg} flex items-center justify-center ring-1 ${colors.ring}`}>
+            <Icon className={`w-5 h-5 ${colors.text}`} />
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">{value}</p>
@@ -271,7 +340,7 @@ function SearchGroup({ icon: Icon, label, items, onClose }: { icon: React.Elemen
     <div className="mb-2">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><Icon className="w-3 h-3" /> {label}</p>
       {items.map(item => (
-        <Link key={item.id} to={item.to} onClick={onClose} className="block px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors">{item.text}</Link>
+        <Link key={item.id} to={item.to} onClick={onClose} className="block px-2 py-1.5 text-sm rounded-lg hover:bg-accent/50 transition-colors">{item.text}</Link>
       ))}
     </div>
   );
