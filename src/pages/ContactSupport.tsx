@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { LifeBuoy, Send, Clock } from 'lucide-react';
+import { Clock, Mail, Phone, Send } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import PageHeader from '@/components/shared/PageHeader';
+
+const CU_SUPPORT_PHONE = import.meta.env.VITE_CU_SUPPORT_PHONE || '+254700000000';
+const CU_SUPPORT_EMAIL = import.meta.env.VITE_CU_SUPPORT_EMAIL || 'cucu@chuka.ac.ke';
 
 export default function ContactSupport() {
   const { user, profile } = useAuthStore();
@@ -65,9 +68,47 @@ export default function ContactSupport() {
     <div className="space-y-6 animate-fade-in">
       <PageHeader title="Contact Support" description="Need help? Submit a support ticket and our team will assist you." />
 
+      <Card className="border-border/60 bg-card/70 supports-[backdrop-filter]:bg-card/45 backdrop-blur-xl shadow-sm">
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-start gap-3 p-4 rounded-xl border border-border/60 bg-muted/20">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Phone className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Telephone</p>
+                <a
+                  href={`tel:${CU_SUPPORT_PHONE.replace(/\s+/g, '')}`}
+                  className="text-sm font-medium text-foreground hover:underline break-all"
+                >
+                  {CU_SUPPORT_PHONE}
+                </a>
+                <p className="text-xs text-muted-foreground mt-1">For urgent help, call during office hours.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-xl border border-border/60 bg-muted/20">
+              <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-secondary-foreground" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CU Email</p>
+                <a
+                  href={`mailto:${CU_SUPPORT_EMAIL}`}
+                  className="text-sm font-medium text-foreground hover:underline break-all"
+                >
+                  {CU_SUPPORT_EMAIL}
+                </a>
+                <p className="text-xs text-muted-foreground mt-1">Prefer email? We’ll respond as soon as possible.</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Submit Form */}
-        <Card className="border-border/50">
+        <Card className="border-border/60 bg-card/70 supports-[backdrop-filter]:bg-card/45 backdrop-blur-xl shadow-sm">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Send className="w-5 h-5 text-primary" /> New Support Ticket
@@ -113,7 +154,7 @@ export default function ContactSupport() {
         </Card>
 
         {/* Past Tickets */}
-        <Card className="border-border/50">
+        <Card className="border-border/60 bg-card/70 supports-[backdrop-filter]:bg-card/45 backdrop-blur-xl shadow-sm">
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" /> My Tickets

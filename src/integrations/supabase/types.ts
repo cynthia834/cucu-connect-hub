@@ -240,6 +240,50 @@ export type Database = {
           },
         ]
       }
+      cbr_daily_reading_logs: {
+        Row: {
+          bible_book: string
+          created_at: string
+          id: string
+          passage: string
+          program_id: string
+          reading_date: string
+          reflection: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bible_book: string
+          created_at?: string
+          id?: string
+          passage: string
+          program_id: string
+          reading_date: string
+          reflection?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bible_book?: string
+          created_at?: string
+          id?: string
+          passage?: string
+          program_id?: string
+          reading_date?: string
+          reflection?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cbr_daily_reading_logs_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string

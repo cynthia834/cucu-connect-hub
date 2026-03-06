@@ -91,11 +91,48 @@ export default function Dashboard() {
   const { data: myEnrollments } = useQuery({
     queryKey: ['dashboard-enrollments', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('program_enrollments').select('id, progress, status, programs(name, description, completion_threshold)').eq('user_id', user!.id);
+      const { data, error } = await supabase
+        .from('program_enrollments')
+        .select('id, program_id, progress, status, programs(id, slug, name, description, completion_threshold)')
+        .eq('user_id', user!.id);
       if (error) throw error;
       return data;
     },
     enabled: !!user,
+  });
+
+  const cbrEnrollment = (myEnrollments as any[] | undefined)?.find(e => (e.programs as any)?.slug === 'cbr');
+  const cbrProgramId = cbrEnrollment?.program_id as string | undefined;
+
+  const { data: cbrDailySummary } = useQuery({
+    queryKey: ['dashboard-cbr-daily-summary', user?.id, cbrProgramId],
+    queryFn: async () => {
+      if (!user || !cbrProgramId) return null;
+      const [{ count, error: countError }, { data: recent, error: recentError }] = await Promise.all([
+        supabase
+          .from('cbr_daily_reading_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('program_id', cbrProgramId),
+        supabase
+          .from('cbr_daily_reading_logs')
+          .select('id, reading_date, bible_book, passage, reflection')
+          .eq('user_id', user.id)
+          .eq('program_id', cbrProgramId)
+          .order('reading_date', { ascending: false })
+          .limit(3),
+      ]);
+      if (countError) throw countError;
+      if (recentError) throw recentError;
+      const days = Math.min(count || 0, 365);
+      return {
+        days,
+        remaining: Math.max(0, 365 - days),
+        pct: Math.min(100, (days / 365) * 100),
+        recent: recent || [],
+      };
+    },
+    enabled: !!user && !!cbrProgramId,
   });
 
   const { data: upcomingEvents } = useQuery({
@@ -143,20 +180,27 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="relative space-y-7 animate-fade-in">
+      {/* Ambient background */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-28 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 blur-3xl opacity-50" />
+        <div className="absolute -top-10 right-[-10rem] h-72 w-72 rounded-full bg-secondary/15 blur-3xl opacity-40" />
+        <div className="absolute -bottom-24 left-[-8rem] h-72 w-72 rounded-full bg-primary/10 blur-3xl opacity-40" />
+      </div>
+
       {/* Search bar */}
       <div className="relative w-full" ref={searchRef}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           placeholder="Search members, events, ministries..."
-          className="pl-10 bg-card border-border"
+          className="pl-10 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl border-border/60 shadow-sm focus-visible:border-primary/40"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           onFocus={() => searchQuery.trim() && setShowResults(true)}
         />
         {showResults && (
-          <Card className="absolute top-full left-0 right-0 mt-1 z-50 shadow-xl max-h-72 overflow-y-auto">
-            <CardContent className="p-2">
+          <Card className="absolute top-full left-0 right-0 mt-2 z-50 shadow-2xl max-h-72 overflow-y-auto border-border/60 bg-popover/90 supports-[backdrop-filter]:bg-popover/70 backdrop-blur-2xl">
+            <CardContent className="p-2.5">
               {isSearching ? <p className="text-sm text-muted-foreground text-center py-4">Searching...</p>
                 : !hasResults ? <p className="text-sm text-muted-foreground text-center py-4">No results</p>
                 : <>
@@ -173,12 +217,12 @@ export default function Dashboard() {
       {/* Profile Card + Daily Devotional Row */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
         {/* Profile Card */}
-        <Card className="border-border/50 overflow-hidden">
-          <CardContent className="p-6">
+        <Card className="border-border/60 overflow-hidden bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl shadow-sm">
+          <CardContent className="p-6 sm:p-7">
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Avatar */}
               <div className="flex-shrink-0 flex sm:block justify-center">
-                <Avatar className="w-24 h-24 ring-[3px] ring-secondary shadow-lg">
+                <Avatar className="w-24 h-24 ring-[3px] ring-secondary/80 shadow-lg ring-offset-2 ring-offset-background">
                   <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'Member'} />
                   <AvatarFallback className="bg-muted text-muted-foreground text-3xl font-display font-bold">
                     {getInitials(profile?.full_name)}
@@ -201,7 +245,7 @@ export default function Dashboard() {
                       {profile?.department ? `${profile.department}` : 'Student'} • Christian Union
                     </p>
                   </div>
-                  <Link to="/profile" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1">
+                  <Link to="/profile" className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1 rounded-md px-2 py-1 hover:bg-muted/40">
                     <Settings className="w-3.5 h-3.5" /> Edit Bio
                   </Link>
                 </div>
@@ -213,7 +257,7 @@ export default function Dashboard() {
                 {/* Role badge */}
                 {roles.length > 0 && (
                   <div className="mt-3">
-                    <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider border-foreground/30 text-foreground px-3 py-1">
+                    <Badge variant="outline" className="text-xs font-semibold uppercase tracking-wider border-foreground/20 bg-background/40 supports-[backdrop-filter]:bg-background/20 px-3 py-1">
                       {roles[0].replace(/_/g, ' ')}
                     </Badge>
                   </div>
@@ -242,8 +286,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Daily Devotional Card */}
-        <Card className="border-0 overflow-hidden shadow-md" style={{ background: 'hsl(var(--secondary))' }}>
-          <CardContent className="p-6 flex flex-col h-full">
+        <Card className="relative overflow-hidden shadow-sm border-border/60 bg-gradient-to-br from-secondary to-secondary/85">
+          <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-background/10 blur-3xl" />
+          <CardContent className="relative p-6 sm:p-7 flex flex-col h-full">
             <div className="flex items-center gap-2 mb-4">
               <BookOpen className="w-5 h-5 text-secondary-foreground" />
               <h3 className="font-display text-lg font-bold text-secondary-foreground">Daily Devotional</h3>
@@ -260,7 +306,7 @@ export default function Dashboard() {
                   Reflect: How can your melody today bring glory to His name?
                 </p>
                 <Link to="/cbr-reading">
-                  <Button variant="outline" size="sm" className="bg-card/20 border-secondary-foreground/30 text-secondary-foreground hover:bg-card/30 w-full">
+                  <Button variant="outline" size="sm" className="bg-background/10 border-secondary-foreground/30 text-secondary-foreground hover:bg-background/15 w-full">
                     <CheckCircle className="w-4 h-4 mr-2" /> Mark as Read
                   </Button>
                 </Link>
@@ -274,7 +320,7 @@ export default function Dashboard() {
                   Reflect: Where is God leading you today?
                 </p>
                 <Link to="/cbr-reading">
-                  <Button variant="outline" size="sm" className="bg-card/20 border-secondary-foreground/30 text-secondary-foreground hover:bg-card/30">
+                  <Button variant="outline" size="sm" className="bg-background/10 border-secondary-foreground/30 text-secondary-foreground hover:bg-background/15">
                     <BookOpen className="w-4 h-4 mr-2" /> View CBR Plan
                   </Button>
                 </Link>
@@ -288,9 +334,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statItems.map((s, i) => (
           <Link key={s.label} to={s.to}>
-            <Card className="border-border/50 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <Card className="group border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl hover:border-primary/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ring-1 ${statColors[i]}`}>
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center ring-1 ${statColors[i]} shadow-sm group-hover:scale-[1.03] transition-transform`}>
                   <s.icon className="w-5 h-5" />
                 </div>
                 <div>
@@ -307,7 +353,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {quickActions.map(a => (
           <Link key={a.to} to={a.to}>
-            <Card className="border-border/50 hover:border-primary/40 hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer group overflow-hidden">
+            <Card className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl hover:border-primary/40 hover:shadow-lg hover:scale-[1.02] transition-all duration-200 cursor-pointer group overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
@@ -333,6 +379,48 @@ export default function Dashboard() {
               View All <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
+
+          {/* CBR Daily Reading Summary */}
+          {cbrDailySummary && (
+            <Card className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl shadow-sm mb-4 overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">CBR Daily Reading</p>
+                    <p className="font-display text-lg font-bold text-foreground leading-tight mt-0.5">
+                      {cbrDailySummary.days} / 365 days
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {cbrDailySummary.remaining} days remaining
+                    </p>
+                  </div>
+                  <Link to="/cbr-reading" className="text-xs text-primary hover:underline shrink-0">
+                    Open log →
+                  </Link>
+                </div>
+
+                <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden mt-3">
+                  <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all" style={{ width: `${cbrDailySummary.pct}%` }} />
+                </div>
+
+                {cbrDailySummary.recent?.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent</p>
+                    {cbrDailySummary.recent.map((r: any) => (
+                      <div key={r.id} className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium text-foreground truncate">{r.bible_book} • {r.passage}</p>
+                          <span className="text-[11px] text-muted-foreground shrink-0">{r.reading_date}</span>
+                        </div>
+                        {r.reflection && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-1">{r.reflection}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {myEnrollments && myEnrollments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {myEnrollments.map(e => {
@@ -341,7 +429,7 @@ export default function Dashboard() {
                 const threshold = Number(program?.completion_threshold || 90);
                 const isComplete = progress >= threshold;
                 return (
-                  <Card key={e.id} className="border-border/50 hover:shadow-md transition-shadow">
+                  <Card key={e.id} className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl hover:shadow-lg transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <h3 className="font-semibold text-sm text-foreground">{program?.name}</h3>
@@ -351,10 +439,10 @@ export default function Dashboard() {
                           </Badge>
                         )}
                       </div>
-                      <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                      <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden mb-1.5">
                         <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, hsl(220 60% 20%), hsl(45 80% 55%))' }}
+                          className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-primary to-secondary"
+                          style={{ width: `${progress}%` }}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground font-medium">{progress.toFixed(0)}% complete</p>
@@ -364,45 +452,103 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <Card className="border-border/50"><CardContent className="py-8 text-center text-sm text-muted-foreground">
+            <Card className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
               No enrolled programs. <Link to="/programs" className="text-primary hover:underline font-medium">Browse programs →</Link>
-            </CardContent></Card>
+              </CardContent>
+            </Card>
           )}
         </div>
 
         {/* Upcoming Events */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3">
+        <Card className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/40 backdrop-blur-xl shadow-sm overflow-hidden">
+          <CardHeader className="pb-2">
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" /> Upcoming Events
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              You are warmly invited to join our weekly CU services. Come as you are — you belong here.
+            </p>
           </CardHeader>
-          <CardContent>
-            {upcomingEvents && upcomingEvents.length > 0 ? (
-              <div className="space-y-3">
-                {upcomingEvents.map(ev => {
-                  const d = new Date(ev.start_date);
-                  return (
-                    <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted/80 transition-colors">
-                      <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-primary flex flex-col items-center justify-center text-primary-foreground">
-                        <span className="text-xs font-medium leading-none">{format(d, 'MMM').toUpperCase()}</span>
-                        <span className="text-lg font-bold leading-none">{format(d, 'd')}</span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm text-foreground truncate">{ev.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {format(d, 'EEE · h:mm a')}
-                          {ev.location && <span className="inline-flex items-center gap-0.5 ml-2"><MapPin className="w-3 h-3" />{ev.location}</span>}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              {/* Default weekly services */}
+              <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-background to-secondary/10 px-3 py-3 shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 right-[-40%] w-2/3 bg-gradient-to-l from-primary/20 via-transparent to-transparent opacity-70" />
+                <div className="flex items-start gap-3 relative">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex flex-col items-center justify-center text-primary-foreground shadow-md">
+                    <span className="text-[10px] font-semibold leading-none tracking-wide">SAT</span>
+                    <span className="text-[11px] font-medium leading-none mt-0.5">6–8:30PM</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-foreground">Saturday Fellowship Service</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Weekly CU evening service at the Pavilion • Worship, Word, and fellowship.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> Pavilion • 6:00PM – 8:30PM
+                    </p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No upcoming events.</p>
-            )}
-            <Link to="/events" className="text-sm text-primary hover:underline inline-block mt-3 font-medium">View All Events →</Link>
+
+              <div className="relative overflow-hidden rounded-2xl border border-secondary/30 bg-gradient-to-r from-secondary/15 via-background to-primary/10 px-3 py-3 shadow-sm">
+                <div className="pointer-events-none absolute inset-y-0 right-[-40%] w-2/3 bg-gradient-to-l from-secondary/25 via-transparent to-transparent opacity-70" />
+                <div className="flex items-start gap-3 relative">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-secondary to-primary flex flex-col items-center justify-center text-primary-foreground shadow-md">
+                    <span className="text-[10px] font-semibold leading-none tracking-wide">SUN</span>
+                    <span className="text-[11px] font-medium leading-none mt-0.5">6:50–9:30AM</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-sm text-foreground">Sunday Morning Service</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Sunday celebration service at the Pavilion • Prayer, praise, and teaching.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> Pavilion • 6:50AM – 9:30AM
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional upcoming events from system */}
+              {upcomingEvents && upcomingEvents.length > 0 && (
+                <>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-2">
+                    More upcoming events
+                  </p>
+                  <div className="space-y-2">
+                    {upcomingEvents.map(ev => {
+                      const d = new Date(ev.start_date);
+                      return (
+                        <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-border/40 bg-muted/30 hover:bg-muted/60 transition-colors">
+                          <div className="flex-shrink-0 w-11 h-11 rounded-lg bg-gradient-to-br from-primary to-secondary flex flex-col items-center justify-center text-primary-foreground shadow-sm">
+                            <span className="text-xs font-medium leading-none">{format(d, 'MMM').toUpperCase()}</span>
+                            <span className="text-lg font-bold leading-none">{format(d, 'd')}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm text-foreground truncate">{ev.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {format(d, 'EEE · h:mm a')}
+                              {ev.location && (
+                                <span className="inline-flex items-center gap-0.5 ml-2">
+                                  <MapPin className="w-3 h-3" />
+                                  {ev.location}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <Link to="/events" className="text-sm text-primary hover:underline inline-block mt-1 font-medium">
+              View All Events →
+            </Link>
           </CardContent>
         </Card>
       </div>
@@ -415,7 +561,7 @@ function SearchGroup({ icon: Icon, label, items, onClose }: { icon: React.Elemen
     <div className="mb-2">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1 flex items-center gap-1"><Icon className="w-3 h-3" /> {label}</p>
       {items.map(item => (
-        <Link key={item.id} to={item.to} onClick={onClose} className="block px-2 py-1.5 text-sm rounded-lg hover:bg-accent/50 transition-colors">{item.text}</Link>
+        <Link key={item.id} to={item.to} onClick={onClose} className="block px-2 py-1.5 text-sm rounded-lg hover:bg-accent/70 transition-colors">{item.text}</Link>
       ))}
     </div>
   );

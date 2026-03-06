@@ -117,11 +117,11 @@ export default function Profile() {
               className="hidden"
               onChange={handleAvatarChange}
             />
-            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-border">
+            <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center overflow-hidden border-4 border-border">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-muted-foreground" />
+                <User className="w-12 h-12 text-muted-foreground" />
               )}
             </div>
             <button

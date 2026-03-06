@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,14 @@ import PageHeader from '@/components/shared/PageHeader';
 
 interface CertificateItem {
   id: string;
+  programId?: string;
+  certificateType: 'membership' | 'program';
   name: string;
   description: string;
   status: 'completed' | 'in_progress' | 'not_started';
   progress: number;
   threshold: number;
+  isEnrolled: boolean;
 }
 
 export default function Certificates() {
@@ -26,7 +29,7 @@ export default function Certificates() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('program_enrollments')
-        .select('id, progress, status, programs(name, description, completion_threshold)')
+        .select('id, program_id, progress, status, programs(id, name, description, completion_threshold)')
         .eq('user_id', user!.id);
       if (error) throw error;
       return data;
@@ -34,37 +37,81 @@ export default function Certificates() {
     enabled: !!user,
   });
 
-  // Build certificate list
-  const certificates: CertificateItem[] = [];
-
-  // CU Membership certificate - available to all
-  certificates.push({
-    id: 'cu-membership',
-    name: 'CU Membership Certificate',
-    description: 'Official certificate of membership in the Christian Union.',
-    status: 'completed',
-    progress: 100,
-    threshold: 100,
-  });
-
-  // Program-specific certificates
-  enrollments?.forEach(e => {
-    const program = e.programs as any;
-    const progress = Number(e.progress);
-    const threshold = Number(program?.completion_threshold || 90);
-    const status = progress >= threshold ? 'completed' : progress > 0 ? 'in_progress' : 'not_started';
-    certificates.push({
-      id: e.id,
-      name: `${program?.name} Certificate`,
-      description: program?.description || 'Complete this program to earn your certificate.',
-      status,
-      progress,
-      threshold,
-    });
+  const { data: programs } = useQuery({
+    queryKey: ['cert-programs-catalog'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('programs')
+        .select('id, name, description, completion_threshold')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
   });
 
   const [activeTab, setActiveTab] = useState('all');
-  const filtered = activeTab === 'all' ? certificates : certificates.filter(c => c.status === activeTab);
+
+  const certificates = useMemo<CertificateItem[]>(() => {
+    const list: CertificateItem[] = [];
+
+    // CU Membership certificate - available to all
+    list.push({
+      id: 'cu-membership',
+      certificateType: 'membership',
+      name: 'CU Membership Certificate',
+      description: 'Official confirmation of your membership in the Christian Union.',
+      status: 'completed',
+      progress: 100,
+      threshold: 100,
+      isEnrolled: true,
+    });
+
+    const enrollmentByProgramId = new Map<string, any>();
+    enrollments?.forEach(e => {
+      if (e.program_id) enrollmentByProgramId.set(e.program_id, e);
+    });
+
+    programs?.forEach(p => {
+      const enrollment = enrollmentByProgramId.get(p.id);
+      const threshold = Number(p.completion_threshold || 90);
+      const progress = enrollment ? Number(enrollment.progress || 0) : 0;
+      const isEnrolled = !!enrollment;
+
+      // Key rule: if enrolled but not completed => in_progress (even if progress is 0)
+      const status: CertificateItem['status'] =
+        isEnrolled && progress >= threshold ? 'completed'
+          : isEnrolled ? 'in_progress'
+            : 'not_started';
+
+      list.push({
+        id: `program-${p.id}`,
+        programId: p.id,
+        certificateType: 'program',
+        name: `${p.name} Certificate`,
+        description: p.description || 'Complete this program to earn your certificate.',
+        status,
+        progress,
+        threshold,
+        isEnrolled,
+      });
+    });
+
+    return list;
+  }, [enrollments, programs]);
+
+  const counts = useMemo(() => {
+    return {
+      all: certificates.length,
+      completed: certificates.filter(c => c.status === 'completed').length,
+      in_progress: certificates.filter(c => c.status === 'in_progress').length,
+      not_started: certificates.filter(c => c.status === 'not_started').length,
+    };
+  }, [certificates]);
+
+  const filtered = useMemo(() => {
+    return activeTab === 'all' ? certificates : certificates.filter(c => c.status === activeTab);
+  }, [activeTab, certificates]);
 
   const handleDownload = (cert: CertificateItem) => {
     const printWindow = window.open('', '_blank');
@@ -107,60 +154,152 @@ export default function Certificates() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader title="Member Certifications" description="View and download certificates for completed programs and activities." />
+    <div className="relative animate-fade-in">
+      {/* Ambient background */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-24 left-1/2 h-72 w-[44rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-primary/15 via-secondary/15 to-primary/15 blur-3xl opacity-50" />
+        <div className="absolute -bottom-28 right-[-8rem] h-72 w-72 rounded-full bg-secondary/10 blur-3xl opacity-50" />
+      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">All Certificates</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-          <TabsTrigger value="not_started">Not Started</TabsTrigger>
-        </TabsList>
+      <div className="space-y-6 max-w-6xl mx-auto">
+        <PageHeader title="Member Certifications" description="View and download certificates for completed programs and activities." />
 
-        <TabsContent value={activeTab} className="mt-4">
-          {filtered.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-muted-foreground">No certificates in this category.</CardContent></Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map(cert => {
-                const config = statusConfig[cert.status];
-                const Icon = config.icon;
-                return (
-                  <Card key={cert.id} className="border-border/50 overflow-hidden">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Icon className="w-5 h-5 text-primary" />
-                        </div>
-                        <Badge variant={config.variant}>{config.label}</Badge>
-                      </div>
-                      <h3 className="font-semibold text-foreground text-sm">{cert.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{cert.description}</p>
-                      {cert.status !== 'completed' && (
-                        <div className="mt-3">
-                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                            <span>Progress</span>
-                            <span>{cert.progress.toFixed(0)}% / {cert.threshold}%</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full justify-start bg-card/40 supports-[backdrop-filter]:bg-card/25 backdrop-blur-xl border border-border/60 rounded-xl p-1 overflow-x-auto flex-nowrap">
+            <TabsTrigger value="all" className="shrink-0 rounded-lg data-[state=active]:bg-background/60 data-[state=active]:shadow-sm px-3 py-2">
+              All Certificates <span className="ml-1 text-muted-foreground">({counts.all})</span>
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="shrink-0 rounded-lg data-[state=active]:bg-background/60 data-[state=active]:shadow-sm px-3 py-2">
+              Completed <span className="ml-1 text-muted-foreground">({counts.completed})</span>
+            </TabsTrigger>
+            <TabsTrigger value="in_progress" className="shrink-0 rounded-lg data-[state=active]:bg-background/60 data-[state=active]:shadow-sm px-3 py-2">
+              In Progress <span className="ml-1 text-muted-foreground">({counts.in_progress})</span>
+            </TabsTrigger>
+            <TabsTrigger value="not_started" className="shrink-0 rounded-lg data-[state=active]:bg-background/60 data-[state=active]:shadow-sm px-3 py-2">
+              Not Started <span className="ml-1 text-muted-foreground">({counts.not_started})</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-5">
+            {filtered.length === 0 ? (
+              <Card className="border-border/60 bg-card/60 supports-[backdrop-filter]:bg-card/35 backdrop-blur-xl">
+                <CardContent className="py-10 text-center text-muted-foreground">No certificates in this category.</CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {filtered.map(cert => {
+                  const config = statusConfig[cert.status];
+                  const Icon = config.icon;
+                  const highlightInProgress = activeTab === 'in_progress' && cert.isEnrolled && cert.status !== 'completed';
+
+                  const availabilityLabel =
+                    cert.status === 'completed' ? 'AVAILABLE'
+                      : cert.status === 'in_progress' ? 'IN PROGRESS'
+                        : 'LOCKED';
+
+                  return (
+                    <Card
+                      key={cert.id}
+                      className={[
+                        "group relative overflow-hidden border-border/60 bg-card/70 supports-[backdrop-filter]:bg-card/45 backdrop-blur-xl shadow-sm transition-all",
+                        "hover:-translate-y-0.5 hover:shadow-lg",
+                        highlightInProgress ? "ring-2 ring-primary/25 shadow-lg" : "",
+                        cert.status === 'not_started' ? "opacity-85" : "",
+                      ].join(' ')}
+                    >
+                      {/* Gold accent stripe */}
+                      <div
+                        aria-hidden
+                        className={[
+                          "absolute left-0 top-0 h-full w-1.5",
+                          cert.status === 'completed' ? "bg-gradient-to-b from-[hsl(var(--warning))] to-primary"
+                            : cert.status === 'in_progress' ? "bg-gradient-to-b from-secondary to-primary"
+                              : "bg-muted",
+                        ].join(' ')}
+                      />
+
+                      <CardContent className="p-5 sm:p-6">
+                        <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                          {/* Thumbnail area */}
+                          <div className="flex items-center gap-4 md:w-44">
+                            <div className="relative w-[92px] h-[92px] rounded-2xl bg-background/60 supports-[backdrop-filter]:bg-background/30 border border-border/60 shadow-sm flex items-center justify-center">
+                              <Icon className="w-8 h-8 text-primary" />
+                              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-border/70 bg-background/80 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-muted-foreground">
+                                {availabilityLabel}
+                              </span>
+                            </div>
+
+                            <div className="flex md:hidden flex-col gap-1">
+                              <Badge className="uppercase tracking-wider text-[10px] px-2.5 py-0.5 w-fit" variant={config.variant}>
+                                {config.label}
+                              </Badge>
+                              {cert.status !== 'completed' && (
+                                <span className="text-xs text-muted-foreground">
+                                  {cert.isEnrolled ? 'Enrolled' : 'Not enrolled'}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${cert.progress}%` }} />
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="hidden md:flex items-start justify-between gap-3">
+                              <h3 className="font-display font-bold text-foreground text-lg leading-tight">{cert.name}</h3>
+                              <Badge className="uppercase tracking-wider text-[10px] px-2.5 py-0.5" variant={config.variant}>
+                                {config.label}
+                              </Badge>
+                            </div>
+
+                            <h3 className="md:hidden font-display font-bold text-foreground text-lg leading-tight">{cert.name}</h3>
+
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{cert.description}</p>
+
+                            {cert.status !== 'completed' && (
+                              <div className="mt-4">
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                  <span>Progress</span>
+                                  <span>{cert.progress.toFixed(0)}% / {cert.threshold}%</span>
+                                </div>
+                                <div className="h-2.5 bg-muted/60 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all"
+                                    style={{ width: `${cert.progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions */}
+                          <div className="md:w-48 md:flex md:justify-end">
+                            {cert.status === 'completed' ? (
+                              <Button size="sm" className="w-full md:w-auto gap-1.5" onClick={() => handleDownload(cert)}>
+                                <Download className="w-3.5 h-3.5" /> Download PDF
+                              </Button>
+                            ) : (
+                              <div className="w-full md:w-auto text-xs text-muted-foreground md:text-right">
+                                {cert.status === 'in_progress' ? (
+                                  <span className="inline-block rounded-md bg-primary/10 text-primary px-2 py-1">
+                                    Enrolled • Keep going
+                                  </span>
+                                ) : (
+                                  <span className="inline-block rounded-md bg-muted px-2 py-1">
+                                    Not enrolled
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                      {cert.status === 'completed' && (
-                        <Button size="sm" className="w-full mt-3 gap-1.5" onClick={() => handleDownload(cert)}>
-                          <Download className="w-3.5 h-3.5" /> Download Certificate
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
